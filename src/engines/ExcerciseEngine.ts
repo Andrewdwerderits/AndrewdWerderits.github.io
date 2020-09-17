@@ -153,7 +153,7 @@ const firstUnsetNoteType = (measure: Measure, config: GenerateSheetMusicConfig):
     });
     
     if (!result) {
-        throw Error("No Unset Notes. Generation failure!");
+        throw Error("No Unset Notes. Generation failure! Please reload the page!");
     }
     return result;
 };
@@ -188,7 +188,7 @@ const randomValidUnsetAccent = (measure: Measure, config: GenerateSheetMusicConf
         }
     }
     
-    throw Error("No place to put your accent. Generation failure!");
+    throw Error("No place to put your accent. Generation failure! Please reload the page!");
 };
 
 const shouldIgnoreInShufflingNotes = (note: Note) => {
@@ -223,7 +223,29 @@ const generateMeasure = (config: GenerateSheetMusicConfig): Measure | string[] =
     }
 
     //shuffle
-    RandomizerEngine.shuffleArray<Note>(measure.notes, shouldIgnoreInShufflingNotes);
+    let keepTrying = true;
+    let retryCount = 0;
+    while (keepTrying || retryCount >= 1000) {
+        RandomizerEngine.shuffleArray<Note>(measure.notes, shouldIgnoreInShufflingNotes);
+        if (
+            noteVarietyDoesNotExceedConsecutiveCount(measure, config.maxConsecutiveSnares, (note) => {
+                return note.noteType === ENoteTypes.snare
+            }) &&
+            noteVarietyDoesNotExceedConsecutiveCount(measure, config.maxConsecutiveKicks, (note) => {
+                return note.noteType === ENoteTypes.kick
+            }) &&
+            noteVarietyDoesNotExceedConsecutiveCount(measure, config.maxConsecutiveRests, (note) => {
+                return note.noteType === ENoteTypes.rest
+            })
+        ) {
+            keepTrying = false;
+        }
+        retryCount += 1;
+    }
+    
+    if (retryCount >= 1000){
+        throw Error("Could not find a suitable arrangement in 1000 attempts. Generation Failure. Please reload the page!");
+    }
 
     // fill in remaining notes
     const remainingNotes = measure.notes.filter((note) => {
@@ -236,7 +258,7 @@ const generateMeasure = (config: GenerateSheetMusicConfig): Measure | string[] =
 
         while (!acceptableNoteFound) {
             if (optionsChecked.length === 3) {
-                throw new Error("No where to place note. Generation failure!");
+                throw new Error("No where to place note. Generation failure! Please reload the page!");
             }
 
             const randomIndex = RandomizerEngine.randomNumberInRange(0, 2);
