@@ -22,7 +22,10 @@ class ExerciseEngine {
             addStickingToMeasure(measure, config);
             addAccentsToMeasure(measure, config);
             const formattedResult = format(measure);
-            return `${header}${formattedResult}`
+            return {
+                abcjsString: `${header}${formattedResult}`,
+                measures: [measure]
+            }
         } catch (e) {
             return e.message;
         }

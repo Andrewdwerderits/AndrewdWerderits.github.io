@@ -8,28 +8,32 @@ import GenerateSheetMusicConfig from './models/GenerateSheetMusicConfig';
 import Header from "./models/Header";
 import RadioButtonArrayTab from './commonComponents/RadioButtonArrayTab';
 import {
-    Tabs,
     AppBar,
-    Tab,
-    Typography,
     Box,
-    FormLabel,
+    Card,
+    CardActions,
+    CardContent,
     FormControl,
+    FormLabel,
+    InputLabel,
     MenuItem,
     Select,
-    InputLabel,
+    Tab,
+    Tabs,
     TextField,
-    CardContent,
-    Card, CardActions, Tooltip
+    Tooltip,
+    Typography
 } from "@material-ui/core";
 import Button from "@material-ui/core/Button";
-import { makeStyles, createStyles, Theme } from '@material-ui/core/styles';
+import {createStyles, makeStyles, Theme} from '@material-ui/core/styles';
 import SwitchArrayTab from "./commonComponents/SwitchArrayTab";
 import ValidationEngine from "./engines/ValidationEngine";
 import EStickingStyle from "./Enums/EStickingStyle";
+import AudioSampler from "./audioComponents/AudioSampler";
+import ENoteTypes from "./Enums/ENoteTypes";
 
 function App() {
-    const [savedExercises, setSavedExercises] = useState<Exercise[]>([new Exercise(`X:1\nT:Paradiddles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c "R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c:|`), new Exercise(`X:1\nT:Doubles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c:|`)]);
+    const [savedExercises, setSavedExercises] = useState<Exercise[]>([new Exercise(`X:1\nT:Paradiddles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c "R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c:|`, []), new Exercise(`X:1\nT:Doubles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c:|`, [])]);
     const [currentExercise, setCurrentExercise] = useState<Exercise>();
     const [exercisesGenerated, setExercisesGenerated] = useState(1);
     const [config, setConfig] = useState<GenerateSheetMusicConfig>(new GenerateSheetMusicConfig(new Header(`Super Dope Title ${exercisesGenerated}`),));
@@ -42,6 +46,53 @@ function App() {
 
     const [measureName, setMeasureName] = useState("Greatest Measure of All Time");
     const [errorList, setErrorList] = useState<string[]>([]);
+    
+    
+    const playTrack = (exercise: Exercise) => {
+        
+        const quarterNoteInterval = 60/exercise.bpm;
+        const sixteenthNoteInterval = quarterNoteInterval/4;
+        
+        const audioContext = new AudioContext();
+        // const kick = new Kick(audioContext);
+        // const snare = new Snare(audioContext);
+        // const now = audioContext.currentTime;
+        
+        // kick.trigger(now);
+        // snare.trigger(now + 0.5);
+        
+        const sampleLoader = (url:any, context:any, callback:any) => {
+            const request = new XMLHttpRequest();
+            request.open('get', url, true);
+            request.responseType = 'arraybuffer';
+            request.onload = () => {
+                context.decodeAudioData(request.response, (buffer: AudioBuffer) => {
+                    callback(buffer);
+                });
+            };
+            request.withCredentials = false;
+            request.send();
+        };
+
+        sampleLoader('snare.wav', audioContext, (buffer: AudioBuffer) => {
+            const snare = new AudioSampler(audioContext, buffer);
+
+            
+            sampleLoader('kick1.wav', audioContext, (buffer: AudioBuffer) => {
+                const kick = new AudioSampler(audioContext, buffer);
+                if (exercise != null) {
+                    exercise.measures[0].notes.forEach((note, index) => {
+                        if (note.noteType === ENoteTypes.snare) {
+                            snare.trigger(audioContext.currentTime + sixteenthNoteInterval*index);
+                        } else if (note.noteType === ENoteTypes.kick) {
+                            kick.trigger(audioContext.currentTime + sixteenthNoteInterval*index);
+                        }
+                    });
+                }
+            });
+        })
+    };
+    
 
     useEffect(() => {
         config.header.title = measureName;
@@ -63,13 +114,16 @@ function App() {
     };
 
     const generateNewExercise = () => {
-        const measure = ExerciseEngine.generateNewSheetMusic(config);
-        if (Array.isArray(measure)) {
-            setErrorList(measure);
+        const exercise = ExerciseEngine.generateNewSheetMusic(config);
+        if (Array.isArray(exercise)) {
+            setErrorList(exercise);
             return;
+        } else {
+            const abcjsString = exercise.abcjsString;
+            const measures = exercise.measures;
+            const newExercise = new Exercise(abcjsString, measures);
+            setCurrentExercise(newExercise);
         }
-        const newExercise = new Exercise(measure);
-        setCurrentExercise(newExercise);
     };
 
     const stickingSelectionChange = (event: any) => {
@@ -112,7 +166,7 @@ function App() {
             },
             toolTip: {
                 fontSize: 20,
-            }
+            },
         }),
     );
     const classes = useStyles();
@@ -154,6 +208,17 @@ function App() {
         setTabIndex(newValue);
     };
 
+    const bpmChange = (event: any) => {
+        if (currentExercise) {
+            let currentExerciseCopy = {
+                ...currentExercise,
+                bpm: parseInt(event.target.value),
+                measures: currentExercise.measures
+            };
+            setCurrentExercise(currentExerciseCopy);
+        }
+    };
+
     // @ts-ignore
     // @ts-ignore
     return (
@@ -170,6 +235,9 @@ function App() {
                             savedExercisesCopy.splice(firstIndexOfExercise, 1);
                             setSavedExercises(savedExercisesCopy);
                         };
+                        const playCallback = () => {
+                            playTrack(exercise);
+                        };
                         return (
                             <Card className={classes.cardRoot}>
                                 <CardContent>
@@ -182,6 +250,9 @@ function App() {
                                         />
                                         <Button variant="contained" color="secondary"
                                                 onClick={deleteCallback}>Delete</Button>
+                                        <Button variant="contained" color="primary"
+                                                onClick={playCallback}
+                                        >PLAY</Button>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -198,6 +269,10 @@ function App() {
                         engraverParams={{responsive: 'resize'}}
                         renderParams={{viewportHorizontal: true}}
                     />
+                    <Button variant="contained" color="primary"
+                            onClick={() => {playTrack(currentExercise)}}
+                    >PLAY</Button>
+                    <TextField style={{ marginLeft: '18px'}} value={currentExercise.bpm} onChange={bpmChange} id="standard-basic" label="BPM of Playback" />
                 </CardContent>
             </Card>
             }
