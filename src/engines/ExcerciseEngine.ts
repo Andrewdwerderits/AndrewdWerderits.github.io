@@ -8,6 +8,7 @@ import Note from "../models/Note";
 import Header from "../models/Header";
 import EStickings from "../Enums/EStickings";
 import EAccents from "../Enums/EAccents";
+import EStickingStyle from "../Enums/EStickingStyle";
 
 class ExerciseEngine {
     // Main entry point All configurations should be passed in here
@@ -18,7 +19,7 @@ class ExerciseEngine {
             if (Array.isArray(measure)) {
                 return measure;
             }
-            // const measureWithSticking = addStickingToMeasure(measure, config.maxConsecutiveKicks);
+            addStickingToMeasure(measure, config);
             addAccentsToMeasure(measure, config);
             const formattedResult = format(measure);
             return `${header}${formattedResult}`
@@ -60,32 +61,62 @@ const format = (measure: Measure) => {
     });
     return `|:${resultString}:|`
 };
-//
-// const addStickingToMeasure = (measure: string[], maxConsecutiveKicks: number) => {
-//     const stickingOptions = ['R', 'L'];
-//    
-//     if (maxConsecutiveKicks > 0) {
-//         return measure;
-//     }
-//    
-//     const constraintFunc = (possibleSequence: string[]) => {
-//         return doesNotExceedStrokeCount(possibleSequence, 2, 'R') &&
-//             doesNotExceedStrokeCount(possibleSequence, 2, 'L');
-//     };
-//    
-//     const insertionFunc = (note: string, sticking: string) => {
-//         if (note.includes('z') || note.includes('f,')) {
-//             return `${note}`
-//         }
-//         return `"${sticking}"${note}`
-//     };
-//
-//     return RandomizerEngine.addRandomPropertyToRandomCollection<string, string>(measure, stickingOptions, constraintFunc, insertionFunc)
-// };
 
-// const addStickingToMeasure = (measure: Measure, config: GenerateSheetMusicConfig): Measure => {
-//    
-// };
+const addStickingToMeasure = (measure: Measure, config: GenerateSheetMusicConfig): Measure => {
+    switch (config.stickingStyle) {
+        case EStickingStyle.none:
+            break;
+        case EStickingStyle.alternating:
+            let lastHit = EStickings.Left;
+            measure.notes.forEach((note) => {
+                if (note.noteType === ENoteTypes.snare) {
+                    if (lastHit === EStickings.Right) {
+                        note.sticking = EStickings.Left;
+                    } else {
+                        note.sticking = EStickings.Right;
+                    }
+                    lastHit = lastHit === EStickings.Right ? EStickings.Left : EStickings.Right;
+                } else {
+                    lastHit = EStickings.Left;
+                }
+            });
+            break;
+        case EStickingStyle.naturalSticking:
+            measure.notes.forEach((note, index) => {
+                if (note.noteType === ENoteTypes.snare) {
+                    if (index % 2 === 0) {
+                        note.sticking = EStickings.Right
+                    } else {
+                        note.sticking = EStickings.Left
+                    }
+                }
+            });
+            break;
+        case EStickingStyle.random:
+            measure.notes.forEach((note) => {
+                if (note.noteType === ENoteTypes.snare) {
+                    const randomIndex = RandomizerEngine.randomNumberInRange(1, 2);
+                    note.sticking = randomIndex as EStickings;
+                    const rightHandDoesNotExceedCount = noteVarietyDoesNotExceedConsecutiveCount(measure, 
+                        config.maxConsecutiveRightHandStickings,
+                        (noteToCheck: Note) => {
+                            return noteToCheck.sticking === EStickings.Right
+                        });
+                    const leftHandDoesNotExceedCount = noteVarietyDoesNotExceedConsecutiveCount(measure, 
+                        config.maxConsecutiveLeftHandStickings,
+                        (noteToCheck: Note) => {
+                            return noteToCheck.sticking === EStickings.Left
+                        });
+                    if (!(rightHandDoesNotExceedCount && leftHandDoesNotExceedCount)) {
+                        note.sticking = randomIndex as EStickings === EStickings.Right ? EStickings.Left: EStickings.Right;
+                    }
+                }
+            });
+
+            break;
+    }
+    return measure;
+};
 
 const addAccentsToMeasure = (measure: Measure, config: GenerateSheetMusicConfig): Measure => {
     config.mandatoryAccentPlacements.forEach((placement) => {
@@ -124,17 +155,6 @@ const firstUnsetNoteType = (measure: Measure, config: GenerateSheetMusicConfig):
     return result;
 };
 
-const firstUnsetStickings = (measure: Measure): Note => {
-    let result = measure.notes.find((note) => {
-        return note.sticking === EStickings.None;
-    });
-
-    if (!result) {
-        throw Error("No Unset Stickings. Generation failure!");
-    }
-    return result;
-};
-
 const randomValidUnsetAccent = (measure: Measure, config: GenerateSheetMusicConfig): Note => {
     const notesChecked: Note[] = [];
     
@@ -146,7 +166,7 @@ const randomValidUnsetAccent = (measure: Measure, config: GenerateSheetMusicConf
             continue;
         }
         
-        if (note.noteType === ENoteTypes.rest || note.noteType === ENoteTypes.kick || note.noteType == ENoteTypes.none || note.accent === EAccents.accented) {
+        if (note.noteType === ENoteTypes.rest || note.noteType === ENoteTypes.kick || note.noteType === ENoteTypes.none || note.accent === EAccents.accented) {
             notesChecked.push(note);
             continue;
         }

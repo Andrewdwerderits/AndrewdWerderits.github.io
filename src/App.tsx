@@ -13,12 +13,8 @@ import {
     Tab,
     Typography,
     Box,
-    Switch,
-    FormControlLabel,
     FormLabel,
     FormControl,
-    FormGroup,
-    FormHelperText,
     MenuItem,
     Select,
     InputLabel,
@@ -30,6 +26,7 @@ import Button from "@material-ui/core/Button";
 import { makeStyles, createStyles, Theme } from '@material-ui/core/styles';
 import SwitchArrayTab from "./commonComponents/SwitchArrayTab";
 import ValidationEngine from "./engines/ValidationEngine";
+import EStickingStyle from "./Enums/EStickingStyle";
 
 function App() {
     const [savedExercises, setSavedExercises] = useState<Exercise[]>([new Exercise(`X:1\nT:Paradiddles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c "R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c:|`), new Exercise(`X:1\nT:Doubles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c:|`)]);
@@ -42,7 +39,6 @@ function App() {
     const [consecutiveHitsSelection, setConsecutiveHitsSelection] = useState('kick');
     const [noteCountSelection, setNoteCountSelection] = useState('kick');
     const [mandatoryNotePlacementSelection, setMandatoryNotePlacementSelection] = useState('kick');
-    const [stickingSelection, setStickingSelection] = useState('none');
 
     const [measureName, setMeasureName] = useState("Greatest Measure of All Time");
     const [errorList, setErrorList] = useState<string[]>([]);
@@ -77,7 +73,9 @@ function App() {
     };
 
     const stickingSelectionChange = (event: any) => {
-        setStickingSelection(event.target.value);
+        config.stickingStyle = parseInt(EStickingStyle[event.target.value]);
+        let newConfig = {...config, header: config.header};
+        setConfig(newConfig);
     };
 
     const measureNameChange = (event: any) => {
@@ -232,11 +230,11 @@ function App() {
                             <Select
                                 labelId="demo-simple-select-label"
                                 id="demo-simple-select"
-                                value={stickingSelection}
+                                value={EStickingStyle[config.stickingStyle]}
                                 onChange={stickingSelectionChange}
                             >
                                 <MenuItem value={'none'}>None</MenuItem>
-                                <MenuItem value={'natural'}>Natural</MenuItem>
+                                <MenuItem value={'naturalSticking'}>Natural</MenuItem>
                                 <MenuItem value={'alternating'}>Alternating</MenuItem>
                                 <MenuItem value={'random'}>Random</MenuItem>
                             </Select>

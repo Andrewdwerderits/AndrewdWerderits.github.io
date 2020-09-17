@@ -26,7 +26,6 @@ export default function SwitchArrayTab(props: SwitchArrayTabProps) {
     const { selection, setSelection, config, setConfig } = props;
 
     const getConfigFieldFromSelection = (selection: string, switchIdentifier: ENotePlacement, config: GenerateSheetMusicConfig) => {
-        let value = '2';
         switch (selection) {
             case 'snare':
                 return config.mandatorySnarePlacements.find((item) => { return item === switchIdentifier}) != null;

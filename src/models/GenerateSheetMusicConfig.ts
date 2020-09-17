@@ -1,7 +1,6 @@
 ﻿import EStickingStyle from '../Enums/EStickingStyle';
 import ENotePlacement from '../Enums/ENotePlacement';
 import Header from "./Header";
-import ENoteDuration from "../Enums/ENoteDuration";
 
 class GenerateSheetMusicConfig {
     

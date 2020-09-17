@@ -1,7 +1,7 @@
 import {
     Card,
     CardContent,
-    FormControl, FormControlLabel, FormGroup,
+    FormControl, FormControlLabel,
     FormLabel,
     InputLabel,
     MenuItem,
@@ -9,10 +9,9 @@ import {
     RadioGroup,
     Select, Switch
 } from "@material-ui/core";
-import React, {useState} from "react";
+import React from "react";
 import {createStyles, makeStyles, Theme} from "@material-ui/core/styles";
 import GenerateSheetMusicConfig from "../models/GenerateSheetMusicConfig";
-import ENotePlacement from "../Enums/ENotePlacement";
 
 interface RadioButtonArrayTabProps {
     config: GenerateSheetMusicConfig;
@@ -27,7 +26,6 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
     const { config, setConfig, selection, setSelection, mode } = props;
 
     const getConfigFieldFromSelection = (selection: string, mode: string, config: GenerateSheetMusicConfig) => {
-        let value = '2';
         switch (selection) {
             case 'snare':
                 return mode === 'consecutive' ? config.maxConsecutiveSnares.toString() : config.snareNoteCount.toString();
@@ -37,6 +35,10 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
                 return mode === 'consecutive' ? config.maxConsecutiveRests.toString() : config.restNoteCount.toString();
             case 'accents':
                 return mode === 'consecutive' ? config.maxConsecutiveAccents.toString() : config.accentNoteCount.toString();
+            case 'right':
+                return config.maxConsecutiveRightHandStickings.toString();
+            case 'left': 
+                return config.maxConsecutiveLeftHandStickings.toString();
         }
     };
 
@@ -54,11 +56,16 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
             case 'accents':
                 mode === 'consecutive' ? config.maxConsecutiveAccents = value : config.accentNoteCount = value;
                 break;
+            case 'right':
+                config.maxConsecutiveRightHandStickings = value;
+                break;
+            case 'left':
+                config.maxConsecutiveLeftHandStickings = value;
+                break;
         }
     };
     
     const onChange = (event: any) => {
-        
         setConfigFieldFromSelection(parseInt(event.target.value), selection, mode, config);
         let newConfig = {...config, header: config.header};
         setConfig(newConfig);
@@ -153,6 +160,10 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
                         <MenuItem value={'kick'}>Kick</MenuItem>
                         <MenuItem value={'rests'}>Rests</MenuItem>
                         <MenuItem value={'accents'}>Accents</MenuItem>
+                        {mode === 'consecutive' &&
+                        <MenuItem value={'right'}>Right Hand Sticking</MenuItem>}
+                        {mode === 'consecutive' &&
+                        <MenuItem value={'left'}>Left Hand Sticking</MenuItem>}
                     </Select>
                     {mode !== 'consecutive' &&
                     <FormControlLabel label="Enable" control={<Switch checked={checked} onChange={handleCheckbox} name="enable"/>}/>}
