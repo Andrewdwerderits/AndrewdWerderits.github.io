@@ -31,6 +31,7 @@ import ValidationEngine from "./engines/ValidationEngine";
 import EStickingStyle from "./Enums/EStickingStyle";
 import AudioSampler from "./audioComponents/AudioSampler";
 import ENoteTypes from "./Enums/ENoteTypes";
+import EAccents from "./Enums/EAccents";
 
 function App() {
     const [savedExercises, setSavedExercises] = useState<Exercise[]>([new Exercise(`X:1\nT:Paradiddles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c "R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c:|`, []), new Exercise(`X:1\nT:Doubles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c:|`, [])]);
@@ -73,6 +74,10 @@ function App() {
             request.withCredentials = false;
             request.send();
         };
+        
+        const hasAccents = exercise.measures[0].notes.findIndex((note) => {
+            return note.accent === EAccents.accented;
+        }) !== -1;
 
         sampleLoader('snare.wav', audioContext, (buffer: AudioBuffer) => {
             const snare = new AudioSampler(audioContext, buffer);
@@ -83,9 +88,11 @@ function App() {
                 if (exercise != null) {
                     exercise.measures[0].notes.forEach((note, index) => {
                         if (note.noteType === ENoteTypes.snare) {
-                            snare.trigger(audioContext.currentTime + sixteenthNoteInterval*index);
+                            const unaccentedHit = hasAccents ? 0.5 : 1;
+                            const gain = note.accent === EAccents.accented ? 2 : unaccentedHit;
+                            snare.trigger(audioContext.currentTime + sixteenthNoteInterval*index, gain);
                         } else if (note.noteType === ENoteTypes.kick) {
-                            kick.trigger(audioContext.currentTime + sixteenthNoteInterval*index);
+                            kick.trigger(audioContext.currentTime + sixteenthNoteInterval*index, 1);
                         }
                     });
                 }
