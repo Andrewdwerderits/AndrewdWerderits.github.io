@@ -25,7 +25,7 @@ class AudioSampler {
         this.gain.gain.setValueAtTime(gain, time);
         this.source.start(time);
         this.gain.gain.setValueAtTime(1, time + 0.1);
-        this.source.stop(time + 0.2)
+        // this.source.stop(time + 0.1)
     }
 }
 

@@ -13,11 +13,11 @@ import {
     Card,
     CardActions,
     CardContent,
-    FormControl,
+    FormControl, FormControlLabel, FormGroup,
     FormLabel,
     InputLabel,
     MenuItem,
-    Select,
+    Select, Switch,
     Tab,
     Tabs,
     TextField,
@@ -32,6 +32,7 @@ import EStickingStyle from "./Enums/EStickingStyle";
 import AudioSampler from "./audioComponents/AudioSampler";
 import ENoteTypes from "./Enums/ENoteTypes";
 import EAccents from "./Enums/EAccents";
+import ENotePlacement from "./Enums/ENotePlacement";
 
 function App() {
     const [savedExercises, setSavedExercises] = useState<Exercise[]>([new Exercise(`X:1\nT:Paradiddles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c "R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c:|`, []), new Exercise(`X:1\nT:Doubles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c:|`, [])]);
@@ -47,6 +48,7 @@ function App() {
 
     const [measureName, setMeasureName] = useState("Greatest Measure of All Time");
     const [errorList, setErrorList] = useState<string[]>([]);
+    const [hiHatOnPlayback, setHiHatOnPlayback] = useState(false);
     
     
     const playTrack = (exercise: Exercise) => {
@@ -83,20 +85,29 @@ function App() {
             const snare = new AudioSampler(audioContext, buffer);
 
             
-            sampleLoader('kick1.wav', audioContext, (buffer: AudioBuffer) => {
-                const kick = new AudioSampler(audioContext, buffer);
-                if (exercise != null) {
-                    exercise.measures[0].notes.forEach((note, index) => {
-                        if (note.noteType === ENoteTypes.snare) {
-                            const unaccentedHit = hasAccents ? 0.5 : 1;
-                            const gain = note.accent === EAccents.accented ? 2 : unaccentedHit;
-                            snare.trigger(audioContext.currentTime + sixteenthNoteInterval*index, gain);
-                        } else if (note.noteType === ENoteTypes.kick) {
-                            kick.trigger(audioContext.currentTime + sixteenthNoteInterval*index, 1);
-                        }
-                    });
-                }
-            });
+            sampleLoader('hihat.wav', audioContext, (buffer: AudioBuffer) => {
+                const hiHat = new AudioSampler(audioContext, buffer);
+
+                sampleLoader('kick1.wav', audioContext, (buffer: AudioBuffer) => {
+                    const kick = new AudioSampler(audioContext, buffer);
+
+                    if (exercise != null) {
+                        exercise.measures[0].notes.forEach((note, index) => {
+                            if (note.noteType === ENoteTypes.snare) {
+                                const unaccentedHit = hasAccents ? 0.5 : 1;
+                                const gain = note.accent === EAccents.accented ? 2 : unaccentedHit;
+                                snare.trigger(audioContext.currentTime + sixteenthNoteInterval * index, gain);
+                            } else if (note.noteType === ENoteTypes.kick) {
+                                kick.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
+                            }
+                            
+                            if (index % 2 == 0 && hiHatOnPlayback) {
+                                hiHat.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
+                            }
+                        });
+                    }
+                })
+            })
         })
     };
     
@@ -141,6 +152,10 @@ function App() {
 
     const measureNameChange = (event: any) => {
         setMeasureName(event.target.value);
+    };
+    
+    const updateHiHat = (event: any) => {
+        setHiHatOnPlayback(event.target.checked);
     };
 
     const useStyles = makeStyles((theme: Theme) =>
@@ -280,6 +295,10 @@ function App() {
                             onClick={() => {playTrack(currentExercise)}}
                     >PLAY</Button>
                     <TextField style={{ marginLeft: '18px'}} value={currentExercise.bpm} onChange={bpmChange} id="standard-basic" label="BPM of Playback" />
+                    <FormControlLabel
+                        control={<Switch checked={hiHatOnPlayback} onChange={updateHiHat} name="oneAnd"/>}
+                        label="Enable HiHat on playback?"
+                    />
                 </CardContent>
             </Card>
             }
