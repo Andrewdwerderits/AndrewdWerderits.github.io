@@ -13,7 +13,7 @@ import {
     Card,
     CardActions,
     CardContent,
-    FormControl, FormControlLabel, FormGroup,
+    FormControl, FormControlLabel,
     FormLabel,
     InputLabel,
     MenuItem,
@@ -32,7 +32,6 @@ import EStickingStyle from "./Enums/EStickingStyle";
 import AudioSampler from "./audioComponents/AudioSampler";
 import ENoteTypes from "./Enums/ENoteTypes";
 import EAccents from "./Enums/EAccents";
-import ENotePlacement from "./Enums/ENotePlacement";
 
 function App() {
     const [savedExercises, setSavedExercises] = useState<Exercise[]>([new Exercise(`X:1\nT:Paradiddles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c "R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c:|`, []), new Exercise(`X:1\nT:Doubles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c:|`, [])]);
@@ -101,7 +100,7 @@ function App() {
                                 kick.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
                             }
                             
-                            if (index % 2 == 0 && hiHatOnPlayback) {
+                            if (index % 2 === 0 && hiHatOnPlayback) {
                                 hiHat.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
                             }
                         });

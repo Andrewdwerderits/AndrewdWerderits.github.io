@@ -64,19 +64,40 @@ class ValidationEngine {
     };
 
     private static maxConsecutiveNotesAreValid = (config: GenerateSheetMusicConfig, errorList: string[]): boolean => {
+        let result = true;
+        
         const snares = config.maxConsecutiveSnares;
         const kicks = config.maxConsecutiveKicks;
         const accents = config.maxConsecutiveAccents;
         const rests = config.maxConsecutiveRests;
         const lefts = config.maxConsecutiveLeftHandStickings;
         const rights = config.maxConsecutiveRightHandStickings;
-
+        
+        if (config.snareNoteCountEnabled) {
+            if (Math.floor(config.maxConsecutiveSnares/(config.maxConsecutiveSnares + 1) * 16) + 1 < config.snareNoteCount) {
+                errorList.push('Impossible arrangement. Need either more consecutive snares allowed or fewer snare notes');
+                result = false;
+            }
+        }
+        if (config.kickNoteCountEnabled) {
+            if (Math.floor(config.maxConsecutiveKicks/(config.maxConsecutiveKicks + 1) * 16) + 1 < config.kickNoteCount) {
+                errorList.push('Impossible arrangement. Need either more consecutive kicks allowed or fewer snare kick');
+                result = false;
+            }
+        }
+        if (config.restNoteCountEnabled) {
+            if (Math.floor(config.maxConsecutiveRests/(config.maxConsecutiveRests + 1) * 16) + 1 < config.restNoteCount) {
+                errorList.push('Impossible arrangement. Need either more consecutive snares allowed or fewer snare notes');
+                result = false;
+            }
+        }
+        
         // any max consecutive is fine, but you can't have 0. Use noteCount to turn off a note Type
         if (snares === 0 || kicks === 0 || accents === 0 || rests === 0 || lefts === 0 || rights === 0) {
             errorList.push('You cannot set maxConsecutive to 0. Use Note Count toggle to turn off a note type. ');
-            return false;
+            result = false;
         }
-        return true;
+        return result;
     };
 
     private static notePlacementsAreValid = (config: GenerateSheetMusicConfig, errorList: string[]): boolean => {
