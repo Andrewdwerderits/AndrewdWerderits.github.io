@@ -5,13 +5,12 @@ import {
     FormLabel,
     InputLabel,
     MenuItem,
-    Paper, Radio,
-    RadioGroup,
-    Select, Switch
+    Select, Switch, CardHeader
 } from "@material-ui/core";
 import React from "react";
 import {createStyles, makeStyles, Theme} from "@material-ui/core/styles";
 import GenerateSheetMusicConfig from "../models/GenerateSheetMusicConfig";
+import Modal from "@material-ui/core/Modal";
 
 interface RadioButtonArrayTabProps {
     config: GenerateSheetMusicConfig;
@@ -19,26 +18,32 @@ interface RadioButtonArrayTabProps {
     selection: string;
     setSelection: (arg: string) => void;
     mode: string;
+    description: string,
+    title: string,
 }
 
-export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
+export default function NumberSelectTab(props: RadioButtonArrayTabProps) {
 
-    const { config, setConfig, selection, setSelection, mode } = props;
+    const {config, setConfig, selection, setSelection, mode, description, title} = props;
+    const [modalStyle] = React.useState(getModalStyle);
+    const [descriptionOpen, setDescriptionOpen] = React.useState(false);
 
     const getConfigFieldFromSelection = (selection: string, mode: string, config: GenerateSheetMusicConfig) => {
         switch (selection) {
             case 'snare':
-                return mode === 'consecutive' ? config.maxConsecutiveSnares.toString() : config.snareNoteCount.toString();
+                return mode === 'consecutive' ? config.maxConsecutiveSnares : config.snareNoteCount;
             case 'kick':
-                return mode === 'consecutive' ? config.maxConsecutiveKicks.toString() : config.kickNoteCount.toString();
+                return mode === 'consecutive' ? config.maxConsecutiveKicks : config.kickNoteCount;
             case 'rests':
-                return mode === 'consecutive' ? config.maxConsecutiveRests.toString() : config.restNoteCount.toString();
+                return mode === 'consecutive' ? config.maxConsecutiveRests : config.restNoteCount;
             case 'accents':
-                return mode === 'consecutive' ? config.maxConsecutiveAccents.toString() : config.accentNoteCount.toString();
+                return mode === 'consecutive' ? config.maxConsecutiveAccents : config.accentNoteCount;
             case 'right':
-                return config.maxConsecutiveRightHandStickings.toString();
-            case 'left': 
-                return config.maxConsecutiveLeftHandStickings.toString();
+                return config.maxConsecutiveRightHandStickings;
+            case 'left':
+                return config.maxConsecutiveLeftHandStickings;
+            default:
+                return mode === 'consecutive' ? 16 : 0;
         }
     };
 
@@ -65,16 +70,18 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
         }
     };
     
+    const value = getConfigFieldFromSelection(selection, mode, config);
+
     const onChange = (event: any) => {
-        setConfigFieldFromSelection(parseInt(event.target.value), selection, mode, config);
+        setConfigFieldFromSelection(event.target.value, selection, mode, config);
         let newConfig = {...config, header: config.header};
         setConfig(newConfig);
     };
 
-    const selectionChange = (event: any) => {
+    const hitSelectionChange = (event: any) => {
         setSelection(event.target.value);
     };
-    
+
     const handleCheckbox = (event: any) => {
         switch (selection) {
             case 'snare':
@@ -94,9 +101,7 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
         let newConfig = {...config, header: config.header};
         setConfig(newConfig);
     };
-
-    let value = getConfigFieldFromSelection(selection, mode, config);
-
+    
     let checked = false;
     switch (selection) {
         case 'snare':
@@ -112,7 +117,7 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
             checked = config.restNoteCountEnabled;
             break;
     }
-    
+
     const useStyles = makeStyles((theme: Theme) =>
         createStyles({
             root: {
@@ -128,7 +133,18 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
                 minWidth: 120,
             },
             cardRoot: {
-                minWidth: 275,
+                display: 'flex',
+                marginTop: '50px',
+                justifyContent: 'center',
+                flexDirection: 'column',
+            },
+            paper: {
+                position: 'absolute',
+                width: 600,
+                backgroundColor: theme.palette.background.paper,
+                border: '2px solid #000',
+                boxShadow: theme.shadows[5],
+                padding: theme.spacing(2, 4, 3),
             },
             bullet: {
                 display: 'inline-block',
@@ -141,12 +157,45 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
             pos: {
                 marginBottom: 12,
             },
+            input: {
+                width: 42,
+                height: 42,
+            },
         }),
     );
     const classes = useStyles();
-    
+
+    const handleHitNumberChange = (event: any) => {
+        onChange(event);
+    };
+
+    function rand() {
+        return Math.round(Math.random() * 20) - 10;
+    }
+
+    function getModalStyle() {
+        const top = 50 + rand();
+        const left = 50 + rand();
+
+        return {
+            top: `${top}%`,
+            left: `${left}%`,
+            transform: `translate(-${top}%, -${left}%)`,
+        };
+    }
+
+    const handleDescriptionClick = (event: any) => {
+        setDescriptionOpen(true);
+    };
+
+    const handleDescriptionClose = (event: any) => {
+        setDescriptionOpen(false);
+    };
+
     return (
+        <div>
         <Card className={classes.cardRoot}>
+            <CardHeader title={title}/>
             <CardContent>
                 <FormControl className={classes.formControl}>
                     <InputLabel id="demo-simple-select-label">Hit Type</InputLabel>
@@ -154,7 +203,7 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
                         labelId="demo-simple-select-label"
                         id="demo-simple-select"
                         value={selection}
-                        onChange={selectionChange}
+                        onChange={hitSelectionChange}
                     >
                         <MenuItem value={'snare'}>Snare</MenuItem>
                         <MenuItem value={'kick'}>Kick</MenuItem>
@@ -166,43 +215,49 @@ export default function RadioButtonArrayTab(props: RadioButtonArrayTabProps) {
                         <MenuItem value={'left'}>Left Hand Sticking</MenuItem>}
                     </Select>
                     {mode !== 'consecutive' &&
-                    <FormControlLabel label="Enable" control={<Switch checked={checked} onChange={handleCheckbox} name="enable"/>}/>}
+                    <FormControlLabel label="Enable"
+                                      control={<Switch checked={checked} onChange={handleCheckbox} name="enable"/>}/>}
                 </FormControl>
                 <FormControl component="fieldset">
                     {mode === 'consecutive' &&
-                    <FormLabel component="legend">Maximum Number of Consecutive Hits Allowed</FormLabel>}
+                    <FormLabel component="legend">Maximum Number of Consecutive Notes Allowed</FormLabel>}
                     {mode !== 'consecutive' &&
-                        <FormLabel component="legend">Exact Number of Hits Allowed</FormLabel>}
-                    <RadioGroup aria-label="gender" name="gender1" value={value} onChange={onChange}>
-                        <Paper>
-                            {mode !== 'consecutive' &&
-                            <FormControlLabel value="0" control={<Radio/>} label="0"/>}
-                            <FormControlLabel value="1" control={<Radio/>} label="1"/>
-                            <FormControlLabel value="2" control={<Radio/>} label="2"/>
-                            <FormControlLabel value="3" control={<Radio/>} label="3"/>
-                            <FormControlLabel value="4" control={<Radio/>} label="4"/>
-                        </Paper>
-                        <Paper>
-                            <FormControlLabel value="5" control={<Radio/>} label="5"/>
-                            <FormControlLabel value="6" control={<Radio/>} label="6"/>
-                            <FormControlLabel value="7" control={<Radio/>} label="7"/>
-                            <FormControlLabel value="8" control={<Radio/>} label="8"/>
-                        </Paper>
-                        <Paper>
-                            <FormControlLabel value="9" control={<Radio/>} label="9"/>
-                            <FormControlLabel value="10" control={<Radio/>} label="10"/>
-                            <FormControlLabel value="11" control={<Radio/>} label="11"/>
-                            <FormControlLabel value="12" control={<Radio/>} label="12"/>
-                        </Paper>
-                        <Paper>
-                            <FormControlLabel value="13" control={<Radio/>} label="13"/>
-                            <FormControlLabel value="14" control={<Radio/>} label="14"/>
-                            <FormControlLabel value="15" control={<Radio/>} label="15"/>
-                            <FormControlLabel value="16" control={<Radio/>} label="16"/>
-                        </Paper>
-                    </RadioGroup>
+                    <FormLabel component="legend">Exact Number of Notes Allowed</FormLabel>}
+                    <Select
+                        labelId="hit-select"
+                        id="hit-select"
+                        value={value}
+                        onChange={handleHitNumberChange}
+                    >
+                        <MenuItem value={1}>1</MenuItem>
+                        <MenuItem value={2}>2</MenuItem>
+                        <MenuItem value={3}>3</MenuItem>
+                        <MenuItem value={4}>4</MenuItem>
+                        <MenuItem value={5}>5</MenuItem>
+                        <MenuItem value={6}>6</MenuItem>
+                        <MenuItem value={7}>7</MenuItem>
+                        <MenuItem value={8}>8</MenuItem>
+                        <MenuItem value={9}>9</MenuItem>
+                        <MenuItem value={10}>10</MenuItem>
+                        <MenuItem value={11}>11</MenuItem>
+                        <MenuItem value={12}>12</MenuItem>
+                        <MenuItem value={13}>13</MenuItem>
+                        <MenuItem value={14}>14</MenuItem>
+                        <MenuItem value={15}>15</MenuItem>
+                        <MenuItem value={16}>16</MenuItem>
+                    </Select>
                 </FormControl>
             </CardContent>
         </Card>
+            <div>
+                <button onClick={handleDescriptionClick}>Help</button>
+                <Modal open={descriptionOpen} onClose={handleDescriptionClose}>
+                    <div style={modalStyle} className={classes.paper}>
+                        <h2>{mode === 'consecutive'? `Maximum Consecutive Hit Description` : `Exact Note Number Description`}</h2>
+                        <p>{description}</p>
+                    </div>
+                </Modal>
+            </div>
+        </div>
     );
 }

@@ -7,7 +7,7 @@ class Exercise {
     measures: Measure[];
     bpm: number;
     
-    constructor(sheetMusic: string, measures: Measure[], bpm: number = 120) {
+    constructor(sheetMusic: string, measures: Measure[], bpm: number = 80) {
         this.sheetMusic = sheetMusic;
         this.measures = measures;
         this.bpm = bpm;

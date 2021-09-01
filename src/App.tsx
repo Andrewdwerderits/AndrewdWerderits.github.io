@@ -6,13 +6,13 @@ import Exercise from './models/Exercise';
 import ExerciseEngine from './engines/ExcerciseEngine';
 import GenerateSheetMusicConfig from './models/GenerateSheetMusicConfig';
 import Header from "./models/Header";
-import RadioButtonArrayTab from './commonComponents/RadioButtonArrayTab';
+import NumberSelectTab from './commonComponents/NumberSelectTab';
 import {
     AppBar,
     Box,
     Card,
     CardActions,
-    CardContent,
+    CardContent, CardHeader,
     FormControl, FormControlLabel,
     FormLabel,
     InputLabel,
@@ -32,38 +32,50 @@ import EStickingStyle from "./Enums/EStickingStyle";
 import AudioSampler from "./audioComponents/AudioSampler";
 import ENoteTypes from "./Enums/ENoteTypes";
 import EAccents from "./Enums/EAccents";
+import {
+    ConsecutiveNoteDescription,
+    MandatoryNoteMusicalHelp,
+    MandatoryNotePlacementDescription, ExactNumberNoteDescription,
+    PageDescription, StickingDescription
+} from "./text/Descriptions";
+import Modal from "@material-ui/core/Modal";
 
 function App() {
-    const [savedExercises, setSavedExercises] = useState<Exercise[]>([new Exercise(`X:1\nT:Paradiddles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c "R"c"L"c"R"c"R"c "L"c"R"c"L"c"L"c:|`, []), new Exercise(`X:1\nT:Doubles\nM:4/4\nC:Trad.\nK:C\nL:1/16\n|:"R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c "R"c"R"c"L"c"L"c:|`, [])]);
-    const [currentExercise, setCurrentExercise] = useState<Exercise>();
+    const [savedExercises, setSavedExercises] = useState<Exercise[]>([]);
+    const [currentExercise, setCurrentExercise] = useState<Exercise | null>();
     const [exercisesGenerated, setExercisesGenerated] = useState(1);
-    const [config, setConfig] = useState<GenerateSheetMusicConfig>(new GenerateSheetMusicConfig(new Header(`Super Dope Title ${exercisesGenerated}`),));
+    const [config, setConfig] = useState<GenerateSheetMusicConfig>(new GenerateSheetMusicConfig(new Header(`New Exercise: ${exercisesGenerated}`),));
 
-    const [tabIndex, setTabIndex] = useState(0);
-
+    const [constraintTabIndex, setConstraintTabIndex] = useState(0);
+    const [constraintOpen, setConstraintOpen] = useState(false);
+    const [modalStyle] = React.useState(getModalStyle);
+    
+    const [stickingDescriptionOpen, setStickingDescriptionOpen] = useState(false);
+    const [pageDescriptionOpen, setPageDescriptionOpen] = useState(false);
+    
     const [consecutiveHitsSelection, setConsecutiveHitsSelection] = useState('kick');
     const [noteCountSelection, setNoteCountSelection] = useState('kick');
     const [mandatoryNotePlacementSelection, setMandatoryNotePlacementSelection] = useState('kick');
 
-    const [measureName, setMeasureName] = useState("Greatest Measure of All Time");
+    const [measureName, setMeasureName] = useState(`Exercise ${exercisesGenerated}`);
     const [errorList, setErrorList] = useState<string[]>([]);
-    const [hiHatOnPlayback, setHiHatOnPlayback] = useState(false);
-    
-    
+    const [hiHatOnPlayback, setHiHatOnPlayback] = useState(true);
+
+
     const playTrack = (exercise: Exercise) => {
-        
-        const quarterNoteInterval = 60/exercise.bpm;
-        const sixteenthNoteInterval = quarterNoteInterval/4;
-        
+
+        const quarterNoteInterval = 60 / exercise.bpm;
+        const sixteenthNoteInterval = quarterNoteInterval / 4;
+
         const audioContext = new AudioContext();
         // const kick = new Kick(audioContext);
         // const snare = new Snare(audioContext);
         // const now = audioContext.currentTime;
-        
+
         // kick.trigger(now);
         // snare.trigger(now + 0.5);
-        
-        const sampleLoader = (url:any, context:any, callback:any) => {
+
+        const sampleLoader = (url: any, context: any, callback: any) => {
             const request = new XMLHttpRequest();
             request.open('get', url, true);
             request.responseType = 'arraybuffer';
@@ -75,7 +87,7 @@ function App() {
             request.withCredentials = false;
             request.send();
         };
-        
+
         const hasAccents = exercise.measures[0].notes.findIndex((note) => {
             return note.accent === EAccents.accented;
         }) !== -1;
@@ -83,7 +95,7 @@ function App() {
         sampleLoader('snare.wav', audioContext, (buffer: AudioBuffer) => {
             const snare = new AudioSampler(audioContext, buffer);
 
-            
+
             sampleLoader('hihat.wav', audioContext, (buffer: AudioBuffer) => {
                 const hiHat = new AudioSampler(audioContext, buffer);
 
@@ -99,7 +111,7 @@ function App() {
                             } else if (note.noteType === ENoteTypes.kick) {
                                 kick.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
                             }
-                            
+
                             if (index % 2 === 0 && hiHatOnPlayback) {
                                 hiHat.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
                             }
@@ -109,14 +121,14 @@ function App() {
             })
         })
     };
-    
+
 
     useEffect(() => {
         config.header.title = measureName;
         let newConfig = {...config, header: config.header};
         setConfig(newConfig);
     }, [measureName]);
-    
+
     useEffect(() => {
         const newErrorList: string[] = [];
         ValidationEngine.configIsValid(config, newErrorList);
@@ -127,7 +139,13 @@ function App() {
         if (currentExercise) {
             setSavedExercises([...savedExercises, currentExercise]);
             setExercisesGenerated(exercisesGenerated + 1);
+            setMeasureName(`Exercise ${exercisesGenerated + 1}`);
+            setCurrentExercise(null);
         }
+    };
+
+    const removeExercise = () => {
+        setCurrentExercise(null);
     };
 
     const generateNewExercise = () => {
@@ -152,7 +170,7 @@ function App() {
     const measureNameChange = (event: any) => {
         setMeasureName(event.target.value);
     };
-    
+
     const updateHiHat = (event: any) => {
         setHiHatOnPlayback(event.target.checked);
     };
@@ -188,6 +206,15 @@ function App() {
             toolTip: {
                 fontSize: 20,
             },
+            paper: {
+                position: 'absolute',
+                width: '60%',
+                height: '60%',
+                backgroundColor: theme.palette.background.paper,
+                border: '2px solid #000',
+                boxShadow: theme.shadows[5],
+                padding: theme.spacing(2, 4, 3),
+            },
         }),
     );
     const classes = useStyles();
@@ -218,15 +245,15 @@ function App() {
         );
     }
 
-    function a11yProps(index: any) {
+    function tabProps(index: any) {
         return {
             id: `simple-tab-${index}`,
             'aria-controls': `simple-tabpanel-${index}`,
         };
     }
 
-    const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
-        setTabIndex(newValue);
+    const handleConstraintTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
+        setConstraintTabIndex(newValue);
     };
 
     const bpmChange = (event: any) => {
@@ -240,14 +267,58 @@ function App() {
         }
     };
 
-    // @ts-ignore
-    // @ts-ignore
+    function rand() {
+        return Math.round(Math.random() * 20) - 10;
+    }
+
+    function getModalStyle() {
+        const top = 50 + rand();
+        const left = 50 + rand();
+
+        return {
+            top: `${top}%`,
+            left: `${left}%`,
+            transform: `translate(-${top}%, -${left}%)`,
+        };
+    }
+
+    const handleConstraintOpen = (event: any) => {
+        setConstraintOpen(true);
+    };
+
+    const handleConstraintClose = (event: any) => {
+        setConstraintOpen(false);
+    };
+    
+    const handleStickingDescriptionClick = (event: any) => {
+        setStickingDescriptionOpen(true);
+    };
+    
+    const handleStickingDescriptionClose = (event: any) => {
+        setStickingDescriptionOpen(false);
+    };
+    
+    const handlePageDescriptionClick = (event: any) => {
+        setPageDescriptionOpen(true);
+    };
+    
+    const handlePageDescriptionClose = (event: any) => {
+        setPageDescriptionOpen(false);
+    };
+    
     return (
         <div className="App">
-            <header>
-            </header>
-            <div className='App-header'>COOL DRUM BEAT GENERATION WEBSITE</div>
+            <div className='App-header'>Random Drum Pattern Generator
+                <Button variant="contained" color="primary" onClick={handlePageDescriptionClick}>What is this?</Button>
+                <Modal open={pageDescriptionOpen} onClose={handlePageDescriptionClose}>
+                    <div style={modalStyle} className={classes.paper}>
+                        <h2>What is this page and why does it exist?</h2>
+                        <p>{PageDescription}</p>
+                    </div>
+                </Modal>
+            </div>
             <Card className={classes.cardRoot}>
+                {savedExercises && savedExercises.length > 0 && <CardHeader title={'Saved Exercises'}/>}
                 <CardContent>
                     {savedExercises.map((exercise) => {
                         const deleteCallback = () => {
@@ -273,7 +344,7 @@ function App() {
                                                 onClick={deleteCallback}>Delete</Button>
                                         <Button variant="contained" color="primary"
                                                 onClick={playCallback}
-                                        >PLAY</Button>
+                                        >Play</Button>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -281,8 +352,10 @@ function App() {
                     })}
                 </CardContent>
             </Card>
-            {currentExercise &&
+
             <Card className={classes.cardRoot}>
+                <CardHeader title={'Unsaved (Current) Exercise'}/>
+                {currentExercise &&
                 <CardContent>
                     <Abcjs
                         abcNotation={currentExercise.sheetMusic}
@@ -291,57 +364,20 @@ function App() {
                         renderParams={{viewportHorizontal: true}}
                     />
                     <Button variant="contained" color="primary"
-                            onClick={() => {playTrack(currentExercise)}}
+                            onClick={() => {
+                                playTrack(currentExercise)
+                            }}
                     >PLAY</Button>
-                    <TextField style={{ marginLeft: '18px'}} value={currentExercise.bpm} onChange={bpmChange} id="standard-basic" label="BPM of Playback" />
+                    <TextField style={{marginLeft: '18px'}} value={currentExercise.bpm} onChange={bpmChange}
+                               id="standard-basic" label="BPM of Playback"/>
                     <FormControlLabel
                         control={<Switch checked={hiHatOnPlayback} onChange={updateHiHat} name="oneAnd"/>}
-                        label="Enable HiHat on playback?"
+                        label="Enable Hi-Hat on playback?"
                     />
                 </CardContent>
+                }
             </Card>
-            }
-            <AppBar position="static">
-                <Tabs value={tabIndex} onChange={handleTabChange} aria-label="simple tabs example">
-                    <Tab label="Maximum Consecutive Number of Hit" {...a11yProps(0)} />
-                    <Tab label="Exact Number Of Each Hit Per Measure" {...a11yProps(1)} />
-                    <Tab label="Specify Specific Note Placements" {...a11yProps(2)} />
-                    <Tab label="Sticking Style" {...a11yProps(3)} />
-                </Tabs>
-            </AppBar>
-            <TabPanel value={tabIndex} index={0}>
-                <RadioButtonArrayTab mode={'consecutive'} selection={consecutiveHitsSelection}
-                                     setSelection={setConsecutiveHitsSelection} config={config} setConfig={setConfig}/>
-            </TabPanel>
-            <TabPanel value={tabIndex} index={1}>
-                <RadioButtonArrayTab mode={'noteCount'} selection={noteCountSelection}
-                                     setSelection={setNoteCountSelection} config={config} setConfig={setConfig}/>
-            </TabPanel>
-            <TabPanel value={tabIndex} index={2}>
-                <SwitchArrayTab selection={mandatoryNotePlacementSelection}
-                                setSelection={setMandatoryNotePlacementSelection} config={config}
-                                setConfig={setConfig}/>
-            </TabPanel>
-            <TabPanel value={tabIndex} index={3}>
-                <Card className={classes.cardRoot}>
-                    <CardContent>
-                        <FormControl className={classes.formControl}>
-                            <InputLabel id="demo-simple-select-label">Sticking Pattern</InputLabel>
-                            <Select
-                                labelId="demo-simple-select-label"
-                                id="demo-simple-select"
-                                value={EStickingStyle[config.stickingStyle]}
-                                onChange={stickingSelectionChange}
-                            >
-                                <MenuItem value={'none'}>None</MenuItem>
-                                <MenuItem value={'naturalSticking'}>Natural</MenuItem>
-                                <MenuItem value={'alternating'}>Alternating</MenuItem>
-                                <MenuItem value={'random'}>Random</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </CardContent>
-                </Card>
-            </TabPanel>
+
             <Card className={classes.cardRoot}>
                 <CardContent>
                     <FormControl component="fieldset">
@@ -349,13 +385,90 @@ function App() {
                         <TextField value={measureName} onChange={measureNameChange} id="standard-basic"
                                    label="Pattern Name"/>
                         <CardActions>
-                            <Tooltip title={<span style={{ fontSize: '18px'}}>{errorList}</span>}>
-                                <span style={{ cursor: 'not-allowed' }}>
-                                <Button disabled={errorList.length > 0} variant="contained"
-                                        onClick={generateNewExercise}>Generate Measure</Button>
-                                </span>
+                            <Tooltip title={<span style={{fontSize: '18px'}}>{errorList}</span>}>
+                                    <span style={{cursor: 'not-allowed'}}>
+                                    <Button disabled={errorList.length > 0} variant="contained"
+                                            onClick={generateNewExercise}>Generate Measure</Button>
+                                    </span>
                             </Tooltip>
-                            <Button variant="contained" color="primary" onClick={saveExercise}>SAVE</Button>
+                            <Button variant="contained" color="primary" onClick={saveExercise}>Save</Button>
+                            <Button variant="contained" color="primary" onClick={removeExercise}>Remove</Button>
+                            <Button variant="contained" color="primary"
+                                    onClick={handleConstraintOpen}>Configure</Button>
+                            <Modal open={constraintOpen} onClose={handleConstraintClose}>
+                                <div style={modalStyle} className={classes.paper}>
+                                    <AppBar>
+                                        <Tabs value={constraintTabIndex} onChange={handleConstraintTabChange}
+                                              aria-label="configuration">
+                                            <Tab label="Consecutive Notes" {...tabProps(0)} />
+                                            <Tab label="Total Number of Notes" {...tabProps(1)} />
+                                            <Tab label="Hit Placement" {...tabProps(2)} />
+                                            <Tab label="Sticking Style" {...tabProps(3)} />
+                                        </Tabs>
+                                    </AppBar>
+                                    <TabPanel value={constraintTabIndex} index={0}>
+                                        <NumberSelectTab mode={'consecutive'} selection={consecutiveHitsSelection}
+                                                         title={'Specify Maximum Consecutive Notes For A Drum Sound'}
+                                                         setSelection={setConsecutiveHitsSelection} config={config}
+                                                         description={ConsecutiveNoteDescription}
+                                                         setConfig={setConfig}/>
+                                    </TabPanel>
+                                    <TabPanel value={constraintTabIndex} index={1}>
+                                        <NumberSelectTab mode={'noteCount'} selection={noteCountSelection}
+                                                         title={'Specify Exact Note Count For A Drum Sound'}
+                                                         setSelection={setNoteCountSelection} config={config}
+                                                         description={ExactNumberNoteDescription}
+                                                         setConfig={setConfig}/>
+                                    </TabPanel>
+                                    <TabPanel value={constraintTabIndex} index={2}>
+                                        <SwitchArrayTab selection={mandatoryNotePlacementSelection}
+                                                        title={'Specify Mandatory Note Placements For A Drum Sound'}
+                                                        description={MandatoryNotePlacementDescription}
+                                                        help={MandatoryNoteMusicalHelp}
+                                                        setSelection={setMandatoryNotePlacementSelection}
+                                                        config={config}
+                                                        setConfig={setConfig}/>
+                                    </TabPanel>
+                                    <TabPanel value={constraintTabIndex} index={3}>
+                                        <div>
+                                            <Card style={{
+                                                display: 'flex',
+                                                marginTop: '50px',
+                                                justifyContent: 'center',
+                                                flexDirection: 'column',
+                                            }}>
+                                                <CardHeader title={'Specify A Sticking Type'}/>
+                                                <CardContent>
+                                                    <FormControl className={classes.formControl}>
+                                                        <InputLabel id="demo-simple-select-label">Sticking
+                                                            Pattern</InputLabel>
+                                                        <Select
+                                                            labelId="demo-simple-select-label"
+                                                            id="demo-simple-select"
+                                                            value={EStickingStyle[config.stickingStyle]}
+                                                            onChange={stickingSelectionChange}
+                                                        >
+                                                            <MenuItem value={'none'}>None</MenuItem>
+                                                            <MenuItem value={'naturalSticking'}>Natural</MenuItem>
+                                                            <MenuItem value={'alternating'}>Alternating</MenuItem>
+                                                            <MenuItem value={'random'}>Random</MenuItem>
+                                                        </Select>
+                                                    </FormControl>
+                                                </CardContent>
+                                            </Card>
+                                            <div>
+                                                <button onClick={handleStickingDescriptionClick}>Help</button>
+                                                <Modal open={stickingDescriptionOpen} onClose={handleStickingDescriptionClose}>
+                                                    <div style={modalStyle} className={classes.paper}>
+                                                        <h2>Sticking Type Description</h2>
+                                                        <p>{StickingDescription}</p>
+                                                    </div>
+                                                </Modal>
+                                            </div>
+                                        </div>
+                                    </TabPanel>
+                                </div>
+                            </Modal>
                         </CardActions>
                     </FormControl>
                 </CardContent>

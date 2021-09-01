@@ -9,7 +9,7 @@ class Header {
     length: ENoteDuration;
 
 
-    constructor(title: string, meter: string = '4/4', composer: string = 'Chongo Johngo', key: string = 'C', length: ENoteDuration = ENoteDuration.sixteenth) {
+    constructor(title: string, meter: string = '4/4', composer: string = '', key: string = 'C', length: ENoteDuration = ENoteDuration.sixteenth) {
         this.title = title;
         this.meter = meter;
         this.composer = composer;

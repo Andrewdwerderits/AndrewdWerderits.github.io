@@ -55,7 +55,7 @@ class ValidationEngine {
             result = false
         }
         
-        if (!(snares + kicks + rests <= subdivision)) {
+        if (snares + kicks + rests > subdivision) {
             errorList.push('You have more notes specified than allowed in a measure per the subdivision. ');
             result = false
         }
@@ -81,7 +81,7 @@ class ValidationEngine {
         }
         if (config.kickNoteCountEnabled) {
             if (Math.floor(config.maxConsecutiveKicks/(config.maxConsecutiveKicks + 1) * 16) + 1 < config.kickNoteCount) {
-                errorList.push('Impossible arrangement. Need either more consecutive kicks allowed or fewer snare kick');
+                errorList.push('Impossible arrangement. Need either more consecutive kicks allowed or fewer kick notes');
                 result = false;
             }
         }
