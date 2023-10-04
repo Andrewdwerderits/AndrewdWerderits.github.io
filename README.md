@@ -1,11 +1,13 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
-
+## Where can I see this application?
 You can visit this website at: https://andrewdwerderits.github.io/
 
+## What is it?
 This is a website to generate random drum patterns using Typescript.
 The intended user is a bored drummer with a basic knowledge of music notation. The patterns are written out in musical notation,
 with a playback option. Be warned, you can generate some rhythms complex enough that they may sound out of time, but they aren't.
 For now all rhythms are created in 4/4 time with a basic 8th note pulse.
+
+This webpage uses local storage to save your current exercise and settings for the next time you visit the page.
 
 You can also configure the parameters used to create the rhythms.
 There are two categories of settings: Instrument Settings and Subdivision Settings.
@@ -41,3 +43,5 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 The page will reload if you make edits.<br />
 You will also see any lint errors in the console.
+
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
