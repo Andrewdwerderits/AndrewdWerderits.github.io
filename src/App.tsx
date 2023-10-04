@@ -159,7 +159,7 @@ function App() {
         audioLoader('CKV1_Snare Loud.wav', audioContext, (buffer: AudioBuffer, time: number) => {
             const snare = new AudioLoader(audioContext, buffer);
             //Not all of the audio files start at the same time, so adding in an offset to delay start
-            playAudio(snare, time + 0.02, exercise.measures, exercise.bpm, EInstrument.Snare);
+            playAudio(snare, time, exercise.measures, exercise.bpm, EInstrument.Snare);
         });
         audioLoader('CKV1_HH Slush Loud.wav', audioContext, (buffer: AudioBuffer, time: number) => {
             const hiHat = new AudioLoader(audioContext, buffer);
