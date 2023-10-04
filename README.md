@@ -1,5 +1,35 @@
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+You can visit this website at: https://andrewdwerderits.github.io/
+
+This is a website to generate random drum patterns using Typescript.
+The intended user is a bored drummer with a basic knowledge of music notation. The patterns are written out in musical notation,
+with a playback option. Be warned, you can generate some rhythms complex enough that they may sound out of time, but they aren't.
+For now all rhythms are created in 4/4 time with a basic 8th note pulse.
+
+You can also configure the parameters used to create the rhythms.
+There are two categories of settings: Instrument Settings and Subdivision Settings.
+Instrument settings control Instrument placements within the generated Measure.
+Subdivision settings control the rhythmic structure of the generated Measure.
+All Instruments and Subdivisions have a Density. This specifies how often they will occur in the generated pattern.
+Instruments also have a Preset. This ensures some specific note placements in the generated pattern. All Presets are commonly occuring patterns in drum rhythms. They can help add a little structure to an otherwise random pattern.
+
+Density values represent the following percentage ranges:
+        None: 0%,
+        Low: 1-25%, 
+        Medium: 26-50%, 
+        High: 51-99%,
+        Very High: 100%`,
+The number of available positions for Instruments will depend on the Subdivisions generated (i.e. a measure of 16th notes will have 16 available positions for an instrument, and a measure of 8th notes will have 8 available positions).
+
+Multiple Instruments may appear at the same position. These are simultaneous hits and are common in drum beats.
+The number of available positions for Subdivisions will always be 8, because we are working in 4/4 time with an 8th note pulse.
+Multiple Subdivisions may not appear at the same position. This would create complex poly rhythms this application does not support.
+If Subdivision Densities are set too high, (the sum of the densities is greater than 100%) the Densities used will be selected randomly each time a Measure is generated.
+If your Density would add more notes than your Preset, place the notes in the Preset and add extra notes randomly. 
+If your Density would add fewer notes than your Preset, place the notes in the Preset and add no additional notes.
+
+
 ## Available Scripts
 
 In the project directory, you can run:
@@ -11,34 +41,3 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 The page will reload if you make edits.<br />
 You will also see any lint errors in the console.
-
-### `yarn test`
-
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `yarn build`
-
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `yarn eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
