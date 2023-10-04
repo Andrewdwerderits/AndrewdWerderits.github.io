@@ -1,22 +1,24 @@
-import EAccents from '../Enums/EAccents';
-import ENoteTypes from '../Enums/ENoteTypes';
+import ENoteVolume from '../Enums/ENoteVolume';
+import EInstrument from '../Enums/EInstrument';
 import EStickings from '../Enums/EStickings';
-import ENoteDuration from '../Enums/ENoteDuration';
-
 class Note {
 
     sticking: EStickings;
-    accent: EAccents;
-    noteType: ENoteTypes;
-    duration: ENoteDuration;
-    placedByUser: boolean;
+    volume: ENoteVolume;
+    mandatoryPlacement: boolean;
+    
+    //Instruments is an array because more than one drum can be hit simultaneously
+    instruments: EInstrument[];
 
-    constructor(noteType = ENoteTypes.rest, duration: ENoteDuration = ENoteDuration.sixteenth, sticking: EStickings = EStickings.None, accent = EAccents.notAccented, placedByUser: boolean = false) {
-        this.noteType = noteType;
+    constructor(instruments = [], 
+                mandatoryPlacement: boolean = false,
+                sticking: EStickings = EStickings.None, 
+                volume = ENoteVolume.Mp) {
+        
+        this.instruments = instruments;
+        this.mandatoryPlacement = mandatoryPlacement;
         this.sticking = sticking;
-        this.accent = accent;
-        this.duration = duration;
-        this.placedByUser = placedByUser;
+        this.volume = volume;
     }
 }
 

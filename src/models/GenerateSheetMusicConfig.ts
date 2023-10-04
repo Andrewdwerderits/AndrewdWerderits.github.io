@@ -1,80 +1,54 @@
 ﻿import EStickingStyle from '../Enums/EStickingStyle';
-import ENotePlacement from '../Enums/ENotePlacement';
-import Header from "./Header";
+import EHiHatPreset from "../Enums/EHiHatPreset";
+import EKickPreset from "../Enums/EKickPreset";
+import ESnarePreset from "../Enums/ESnarePreset";
+import EDensity from "../Enums/EDensity";
 
 class GenerateSheetMusicConfig {
+    //Meter config
+    eighthTriplets: EDensity;
+    sixteenthTriplets: EDensity;
+    eighthNotes: EDensity;
+    sixteenthNotes: EDensity;
     
-    maxConsecutiveKicks: number;
-    maxConsecutiveAccents: number;
-    maxConsecutiveSnares: number;
-    maxConsecutiveRests: number;
-    maxConsecutiveLeftHandStickings: number;
-    maxConsecutiveRightHandStickings: number;
-    
-    kickNoteCount: number;
-    snareNoteCount: number;
-    accentNoteCount: number;
-    restNoteCount: number;
-    
-    kickNoteCountEnabled: boolean;
-    snareNoteCountEnabled: boolean;
-    accentNoteCountEnabled: boolean;
-    restNoteCountEnabled: boolean;
-    
-    mandatoryKickPlacements: ENotePlacement[];
-    mandatorySnarePlacements: ENotePlacement[];
-    mandatoryAccentPlacements: ENotePlacement[];
-    mandatoryRestPlacements: ENotePlacement[];
-    
+    accentDensity: EDensity;
     stickingStyle: EStickingStyle;
     
-    subdivision: number;
+    //TODO: Add more instruments here
+    hiHatPreset: EHiHatPreset;
+    hiHatDensity: EDensity;
     
-    header: Header;
+    kickPreset: EKickPreset;
+    kickDensity: EDensity;
+    
+    snarePreset: ESnarePreset;
+    snareDensity: EDensity;
 
-    constructor(header: Header,
-                maxConsecutiveKicks: number = 16,
-                maxConsecutiveAccents: number = 16,
-                maxConsecutiveSnares: number = 16,
-                maxConsecutiveRests: number = 16,
-                maxConsecutiveLeftHandStickings: number = 16,
-                maxConsecutiveRightHandStickings: number = 16,
-                kickNoteCount: number = 0,
-                snareNoteCount: number = 0,
-                accentNoteCount: number = 0,
-                restNoteCount: number = 0,
-                kickNoteCountEnabled: boolean = false,
-                snareNoteCountEnabled: boolean = false,
-                accentNoteCountEnabled: boolean = false,
-                restNoteCountEnabled: boolean = false,
-                mandatoryKickPlacements: ENotePlacement[] = [],
-                mandatorySnarePlacements: ENotePlacement[] = [],
-                mandatoryAccentPlacements: ENotePlacement[] = [],
-                mandatoryRestPlacements: ENotePlacement[] = [],
-                stickingStyle: EStickingStyle = EStickingStyle.none) {
-
-        this.header = header;
-        this.maxConsecutiveKicks = maxConsecutiveKicks;
-        this.maxConsecutiveAccents = maxConsecutiveAccents;
-        this.maxConsecutiveSnares = maxConsecutiveSnares;
-        this.maxConsecutiveRests = maxConsecutiveRests;
-        this.maxConsecutiveLeftHandStickings = maxConsecutiveLeftHandStickings;
-        this.maxConsecutiveRightHandStickings = maxConsecutiveRightHandStickings;
-        this.kickNoteCount = kickNoteCount;
-        this.snareNoteCount = snareNoteCount;
-        this.accentNoteCount = accentNoteCount;
-        this.restNoteCount = restNoteCount;
-        this.kickNoteCountEnabled = kickNoteCountEnabled;
-        this.snareNoteCountEnabled = snareNoteCountEnabled;
-        this.accentNoteCountEnabled = accentNoteCountEnabled;
-        this.restNoteCountEnabled = restNoteCountEnabled;
-        this.mandatoryKickPlacements = mandatoryKickPlacements;
-        this.mandatorySnarePlacements = mandatorySnarePlacements;
-        this.mandatoryAccentPlacements = mandatoryAccentPlacements;
-        this.mandatoryRestPlacements = mandatoryRestPlacements;
-        this.stickingStyle = stickingStyle;
+    constructor(eighthTriplets: EDensity = EDensity.None,
+                sixteenthTriplets: EDensity = EDensity.Medium,
+                eighthNotes: EDensity = EDensity.Medium,
+                sixteenthNotes: EDensity = EDensity.Medium,
+                hiHatPreset: EHiHatPreset = EHiHatPreset.EighthNotes,
+                hiHatDensity: EDensity = EDensity.VeryHigh,
+                kickPreset: EKickPreset = EKickPreset.QuarterNotes,
+                kickDensity: EDensity = EDensity.Medium,
+                snarePreset: ESnarePreset = ESnarePreset.BackBeat,
+                snareDensity: EDensity = EDensity.Low,
+                stickingStyle: EStickingStyle = EStickingStyle.None,
+                accentDensity: EDensity = EDensity.None) {
         
-        this.subdivision = this.header.translateLengthToInt();
+        this.eighthTriplets = eighthTriplets;
+        this.sixteenthTriplets = sixteenthTriplets;
+        this.eighthNotes = eighthNotes;
+        this.sixteenthNotes = sixteenthNotes;
+        this.hiHatPreset = hiHatPreset;
+        this.hiHatDensity = hiHatDensity;
+        this.kickPreset = kickPreset;
+        this.kickDensity = kickDensity;
+        this.snarePreset = snarePreset;
+        this.snareDensity = snareDensity;
+        this.stickingStyle = stickingStyle;
+        this.accentDensity = accentDensity;
     }
 }
 

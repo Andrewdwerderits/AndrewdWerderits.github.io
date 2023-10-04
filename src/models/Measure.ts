@@ -1,36 +1,22 @@
-import Note from './Note';
-import ENoteTypes from "../Enums/ENoteTypes";
-import ENoteDuration from "../Enums/ENoteDuration";
+import NoteCluster from './NoteCluster';
 
 class Measure {
     
-    notes: Note[];
+    noteClusters: NoteCluster[];
+    measureDuration: number;
     
-    constructor(subdivision: number) {
-        this.notes = [];
-        let noteDuration = ENoteDuration.sixteenth;
-        
-        switch(subdivision) {
-            case 16:  
-                noteDuration = ENoteDuration.sixteenth;
-                break;
-            case 8:
-                noteDuration = ENoteDuration.eighth;
-                break;
-            case 4:
-                noteDuration = ENoteDuration.quarter;
-                break;
-            case 2:
-                noteDuration = ENoteDuration.half;
-                break;
-            default:
-                throw new Error('Unsupported subdivision');
-        }
-        
-        for (let i = 0; i < subdivision; i++) {
-            this.notes.push(new Note(ENoteTypes.none, noteDuration));
-        }
+    constructor(measureDuration: number = 8) {
+        this.measureDuration = measureDuration;
+        this.noteClusters = [];
     }
+    
+    public isMeasureFull(): boolean {
+        let currentDuration = 0;
+        this.noteClusters.forEach((cluster) => {
+            currentDuration += cluster.duration;
+        });
+        return currentDuration >= this.measureDuration;
+    };
 }
 
 export default Measure;

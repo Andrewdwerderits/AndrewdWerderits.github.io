@@ -1,4 +1,4 @@
-class AudioSampler {
+class AudioLoader {
 
     context: AudioContext;
     buffer: AudioBuffer;
@@ -29,4 +29,4 @@ class AudioSampler {
     }
 }
 
-export default AudioSampler;
+export default AudioLoader;
