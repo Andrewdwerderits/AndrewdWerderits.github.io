@@ -1,24 +1,17 @@
-﻿import Measure from "./Measure";
-import ENoteTypes from "../Enums/ENoteTypes";
+﻿import Measure from './Measure';
 
 class Exercise {
     
-    sheetMusic: string;
+    abcJsNotation: string;
+    title: string;
     measures: Measure[];
     bpm: number;
     
-    constructor(sheetMusic: string, measures: Measure[], bpm: number = 80) {
-        this.sheetMusic = sheetMusic;
+    constructor(abcJsNotation: string, measures: Measure[], title: string = "New Exercise", bpm: number = 80) {
+        this.abcJsNotation = abcJsNotation;
+        this.title = title;
         this.measures = measures;
         this.bpm = bpm;
-        
-        if (!measures || measures.length === 0) {
-            const measure = new Measure(16);
-            for(let i = 0; i < 16; i++) {
-                measure.notes[i].noteType = ENoteTypes.snare;
-            }
-            measures.push(measure);
-        }
     }
 }
 

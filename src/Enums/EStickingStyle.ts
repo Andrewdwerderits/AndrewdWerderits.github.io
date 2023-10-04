@@ -1,8 +1,8 @@
 enum EStickingStyle {
-    none,
-    naturalSticking,
-    alternating,
-    random
+    None,
+    NaturalSticking,
+    Alternating,
+    Random
 }
 
 export default EStickingStyle;

@@ -1,478 +1,409 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import './App.css';
 import 'font-awesome/css/font-awesome.min.css';
 import Abcjs from 'react-abcjs';
 import Exercise from './models/Exercise';
 import ExerciseEngine from './engines/ExcerciseEngine';
 import GenerateSheetMusicConfig from './models/GenerateSheetMusicConfig';
-import Header from "./models/Header";
-import NumberSelectTab from './commonComponents/NumberSelectTab';
-import {
-    AppBar,
-    Box,
-    Card,
-    CardActions,
-    CardContent, CardHeader,
-    FormControl, FormControlLabel,
-    FormLabel,
-    InputLabel,
-    MenuItem,
-    Select, Switch,
-    Tab,
-    Tabs,
-    TextField,
-    Tooltip,
-    Typography
-} from "@material-ui/core";
-import Button from "@material-ui/core/Button";
-import {createStyles, makeStyles, Theme} from '@material-ui/core/styles';
-import SwitchArrayTab from "./commonComponents/SwitchArrayTab";
-import ValidationEngine from "./engines/ValidationEngine";
-import EStickingStyle from "./Enums/EStickingStyle";
-import AudioSampler from "./audioComponents/AudioSampler";
-import ENoteTypes from "./Enums/ENoteTypes";
-import EAccents from "./Enums/EAccents";
-import {
-    ConsecutiveNoteDescription,
-    MandatoryNoteMusicalHelp,
-    MandatoryNotePlacementDescription, ExactNumberNoteDescription,
-    PageDescription, StickingDescription
-} from "./text/Descriptions";
-import Modal from "@material-ui/core/Modal";
+import {FormControl, TextField, Tooltip,} from '@material-ui/core';
+import Button from '@material-ui/core/Button';
+import EInstrument from './Enums/EInstrument';
+import ENoteVolume from './Enums/ENoteVolume';
+import {PageDescription,} from './text/Descriptions';
+import Modal from '@material-ui/core/Modal';
+import AbcJsEngine from './engines/AbcJsEngine';
+import Measure from './models/Measure';
+import ConfigurationModal from './commonComponents/ConfigurationModal';
+import {getModalStyle, useStyles} from './Styles/CommonStyles';
+import AudioLoader from './audioComponents/AudioLoader';
 
 function App() {
-    const [savedExercises, setSavedExercises] = useState<Exercise[]>([]);
-    const [currentExercise, setCurrentExercise] = useState<Exercise | null>();
-    const [exercisesGenerated, setExercisesGenerated] = useState(1);
-    const [config, setConfig] = useState<GenerateSheetMusicConfig>(new GenerateSheetMusicConfig(new Header(`New Exercise: ${exercisesGenerated}`),));
 
-    const [constraintTabIndex, setConstraintTabIndex] = useState(0);
-    const [constraintOpen, setConstraintOpen] = useState(false);
+    //#region Variables
+    const [config, setConfig] = useState<GenerateSheetMusicConfig>(new GenerateSheetMusicConfig());
+    const [exercise, setExercise] = useState<Exercise>(new Exercise('', []));
+
+    const [playbackAudioContext, setPlaybackAudioContext] = useState<AudioContext>()
+    const playbackAudioContextRef = useRef(playbackAudioContext);
+    playbackAudioContextRef.current = playbackAudioContext;
+    
+    const [playCount, setPlayCount] = useState<number>(0);
+    const playCountRef = useRef(playCount);
+    playCountRef.current = playCount;
+    
+    const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+    const [configureOpen, setConfigureOpen] = useState<boolean>(false);
     const [modalStyle] = React.useState(getModalStyle);
-    
-    const [stickingDescriptionOpen, setStickingDescriptionOpen] = useState(false);
-    const [pageDescriptionOpen, setPageDescriptionOpen] = useState(false);
-    
-    const [consecutiveHitsSelection, setConsecutiveHitsSelection] = useState('kick');
-    const [noteCountSelection, setNoteCountSelection] = useState('kick');
-    const [mandatoryNotePlacementSelection, setMandatoryNotePlacementSelection] = useState('kick');
 
-    const [measureName, setMeasureName] = useState(`Exercise ${exercisesGenerated}`);
-    const [errorList, setErrorList] = useState<string[]>([]);
-    const [hiHatOnPlayback, setHiHatOnPlayback] = useState(true);
+    const [pageDescriptionOpen, setPageDescriptionOpen] = useState<boolean>(false);
 
+    //#endregion
 
+    //#region Effects
+
+    const styleClasses = useStyles();
+
+    useEffect(() => {
+        const existingExercise = localStorage.getItem('savedExercise');
+        if (existingExercise) {
+            const value: Exercise = JSON.parse(existingExercise);
+            setExercise(value);
+        }
+
+        const existingConfig = localStorage.getItem('config');
+        if (existingConfig) {
+            const value: GenerateSheetMusicConfig = JSON.parse(existingConfig);
+            setConfig(value);
+        }
+    }, []);
+
+    //#endregion
+
+    //#region Playback
+
+    // loops through measures and plays a single instrument
+    // For accurate playback, the same time should be passed to every instrument
+    const playAudio = (sampler: AudioLoader, time: number, measures: Measure[], bpm: number, instrument: EInstrument) => {
+        // add a short delay to make sure everything plays at the same time
+        time += 0.03;
+
+        const quarterNoteInterval = 60 / bpm;
+        const eighthNoteInterval = quarterNoteInterval / 2;
+
+        const getGainFromVolume = (volume: ENoteVolume): number => {
+            switch (volume) {
+                case ENoteVolume.Pp:
+                    return 0.3
+                case ENoteVolume.P:
+                    return 0.5
+                case ENoteVolume.Mp:
+                    return 0.7;
+                case ENoteVolume.Mf:
+                    return 1;
+                case ENoteVolume.F:
+                    return 1.4
+                case ENoteVolume.Ff:
+                    return 2;
+            }
+        };
+
+        // Loop through each note cluster in each measure and figure out the timings based on the number of
+        // notes in each note cluster. 
+        let totalDuration = 0;
+        measures.forEach((measure) => {
+            measure.noteClusters.forEach((cluster) => {
+
+                // determine timings
+                const clusterLength = cluster.duration;
+                const noteCount = cluster.notes.length;
+                const durationCoefficient = clusterLength / noteCount;
+
+                // see if our instrument has a note in the cluster, and play it if necessary
+                for (let i = 0; i < noteCount; i++) {
+                    const note = cluster.notes[i];
+                    const noteMatchingInstrument = note.instruments.find((noteInstrument) => {
+                        return noteInstrument === instrument;
+                    });
+                    if (noteMatchingInstrument != null) {
+                        
+                        // Balance the gain to fit the sounds of the audio files
+                        let gain = getGainFromVolume(note.volume);
+                        if (instrument === EInstrument.Kick)
+                        {
+                            gain = gain * 10;
+                        }
+                        if (instrument === EInstrument.Snare) {
+                            gain = gain * 2;
+                        }
+                        sampler.trigger(time + totalDuration, gain);
+                    }
+                    totalDuration += durationCoefficient * eighthNoteInterval;
+                }
+            });
+        });
+    };
+
+    // Build our audio context if necessary, and make requests to play our tracks
     const playTrack = (exercise: Exercise) => {
+        let audioContext: AudioContext;
 
-        const quarterNoteInterval = 60 / exercise.bpm;
-        const sixteenthNoteInterval = quarterNoteInterval / 4;
+        if (playbackAudioContext == null) {
+            audioContext = new AudioContext();
+            setPlaybackAudioContext(audioContext);
+        } else {
+            audioContext = playbackAudioContext;
+        }
 
-        const audioContext = new AudioContext();
-        // const kick = new Kick(audioContext);
-        // const snare = new Snare(audioContext);
-        // const now = audioContext.currentTime;
+        const currentPlayCount = playCount + 1;
+        setPlayCount(currentPlayCount);
+        setIsPlaying(true);
 
-        // kick.trigger(now);
-        // snare.trigger(now + 0.5);
-
-        const sampleLoader = (url: any, context: any, callback: any) => {
+        // fetch the data for our sounds and prepare to play them
+        const audioLoader = (url: any, context: any, callback: any) => {
             const request = new XMLHttpRequest();
             request.open('get', url, true);
             request.responseType = 'arraybuffer';
             request.onload = () => {
                 context.decodeAudioData(request.response, (buffer: AudioBuffer) => {
-                    callback(buffer);
+                    const time = audioContext.currentTime;
+                    callback(buffer, time);
                 });
             };
             request.withCredentials = false;
             request.send();
         };
 
-        const hasAccents = exercise.measures[0].notes.findIndex((note) => {
-            return note.accent === EAccents.accented;
-        }) !== -1;
+        //TODO: Add additional instruments here
 
-        sampleLoader('snare.wav', audioContext, (buffer: AudioBuffer) => {
-            const snare = new AudioSampler(audioContext, buffer);
+        audioLoader('CKV1_Snare Loud.wav', audioContext, (buffer: AudioBuffer, time: number) => {
+            const snare = new AudioLoader(audioContext, buffer);
+            //Not all of the audio files start at the same time, so adding in an offset to delay start
+            playAudio(snare, time + 0.02, exercise.measures, exercise.bpm, EInstrument.Snare);
+        });
+        audioLoader('CKV1_HH Slush Loud.wav', audioContext, (buffer: AudioBuffer, time: number) => {
+            const hiHat = new AudioLoader(audioContext, buffer);
+            playAudio(hiHat, time, exercise.measures, exercise.bpm, EInstrument.HiHat);
+        });
+        audioLoader('CKV1_Kick Soft.wav', audioContext, (buffer: AudioBuffer, time: number) => {
+            const kick = new AudioLoader(audioContext, buffer);
+            playAudio(kick, time, exercise.measures, exercise.bpm, EInstrument.Kick);
+        });
 
+        // figure out how long we expect the sample top lay for
+        const quarterNoteInterval = 60 / exercise.bpm;
+        // adding a delay just in case there is lag
+        const totalDuration = exercise.measures.length * 4 * quarterNoteInterval * 1000 + 500;
 
-            sampleLoader('hihat.wav', audioContext, (buffer: AudioBuffer) => {
-                const hiHat = new AudioSampler(audioContext, buffer);
+        // If the audio has played and the user hasn't stopped it manually, let's stop it
+        setTimeout(() => {
+            if (playCountRef.current === currentPlayCount) {
+                stopAudio();
+            }
+        }, totalDuration);
 
-                sampleLoader('kick1.wav', audioContext, (buffer: AudioBuffer) => {
-                    const kick = new AudioSampler(audioContext, buffer);
-
-                    if (exercise != null) {
-                        exercise.measures[0].notes.forEach((note, index) => {
-                            if (note.noteType === ENoteTypes.snare) {
-                                const unaccentedHit = hasAccents ? 0.5 : 1;
-                                const gain = note.accent === EAccents.accented ? 2 : unaccentedHit;
-                                snare.trigger(audioContext.currentTime + sixteenthNoteInterval * index, gain);
-                            } else if (note.noteType === ENoteTypes.kick) {
-                                kick.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
-                            }
-
-                            if (index % 2 === 0 && hiHatOnPlayback) {
-                                hiHat.trigger(audioContext.currentTime + sixteenthNoteInterval * index, 1);
-                            }
-                        });
-                    }
-                })
-            })
-        })
     };
 
+    const stopAudio = () => {
+        const audioContext = playbackAudioContextRef.current;
+        if (audioContext) {
+            if (audioContext.state !== 'closed') {
+                audioContext.close().then(() => {
+                    setIsPlaying(false);
+                    setPlaybackAudioContext(new AudioContext());
+                });
+            } else {
+                setIsPlaying(false);
+            }
+        }
+    }
 
-    useEffect(() => {
-        config.header.title = measureName;
-        let newConfig = {...config, header: config.header};
-        setConfig(newConfig);
-    }, [measureName]);
+    //#endregion
 
-    useEffect(() => {
-        const newErrorList: string[] = [];
-        ValidationEngine.configIsValid(config, newErrorList);
-        setErrorList(newErrorList);
-    }, [config]);
+    //#region Measure Manipulation
+    const save = () => {
+        const key = 'savedExercise';
+        const value = JSON.stringify(exercise);
+        localStorage.setItem(key, value);
 
-    const saveExercise = () => {
-        if (currentExercise) {
-            setSavedExercises([...savedExercises, currentExercise]);
-            setExercisesGenerated(exercisesGenerated + 1);
-            setMeasureName(`Exercise ${exercisesGenerated + 1}`);
-            setCurrentExercise(null);
+        const configKey = 'config';
+        const configValue = JSON.stringify(config);
+        localStorage.setItem(configKey, configValue);
+    };
+
+    const createExercise = (measures: Measure[], bpm: number, title: string): Exercise => {
+        return AbcJsEngine.createExerciseForAbcJs(measures, bpm, title, config);
+    };
+
+    const deleteMeasure = () => {
+        const measureNumber = exercise.measures.length;
+        const measureIndex = measureNumber - 1;
+        if (measureIndex >= 0 && measureIndex <= exercise.measures.length) {
+            const measures = exercise.measures.filter((_measure, index) => {
+                return index !== measureIndex;
+            });
+            const updatedExercise = createExercise(measures, exercise.bpm, exercise.title);
+            setExercise(updatedExercise);
         }
     };
 
-    const removeExercise = () => {
-        setCurrentExercise(null);
-    };
-
-    const generateNewExercise = () => {
-        const exercise = ExerciseEngine.generateNewSheetMusic(config);
-        if (Array.isArray(exercise)) {
-            setErrorList(exercise);
-            return;
-        } else {
-            const abcjsString = exercise.abcjsString;
-            const measures = exercise.measures;
-            const newExercise = new Exercise(abcjsString, measures);
-            setCurrentExercise(newExercise);
+    const GenerateMeasure = () => {
+        let measures: Measure[] = [];
+        if (exercise.measures.length > 0) {
+            measures = [...exercise.measures];
         }
+        measures.push(ExerciseEngine.generateNewMeasure(config));
+        const updatedExercise = createExercise(measures, exercise.bpm, exercise.title);
+        setExercise(updatedExercise);
     };
 
-    const stickingSelectionChange = (event: any) => {
-        config.stickingStyle = parseInt(EStickingStyle[event.target.value]);
-        let newConfig = {...config, header: config.header};
-        setConfig(newConfig);
-    };
+    //#endregion
 
-    const measureNameChange = (event: any) => {
-        setMeasureName(event.target.value);
-    };
+    //#region UI controls
 
-    const updateHiHat = (event: any) => {
-        setHiHatOnPlayback(event.target.checked);
-    };
-
-    const useStyles = makeStyles((theme: Theme) =>
-        createStyles({
-            root: {
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                '& > *': {
-                    margin: theme.spacing(1),
-                },
-            },
-            formControl: {
-                margin: theme.spacing(1),
-                minWidth: 120,
-            },
-            cardRoot: {
-                minWidth: 275,
-            },
-            bullet: {
-                display: 'inline-block',
-                margin: '0 2px',
-                transform: 'scale(0.8)',
-            },
-            title: {
-                fontSize: 14,
-            },
-            pos: {
-                marginBottom: 12,
-            },
-            toolTip: {
-                fontSize: 20,
-            },
-            paper: {
-                position: 'absolute',
-                width: '60%',
-                height: '60%',
-                backgroundColor: theme.palette.background.paper,
-                border: '2px solid #000',
-                boxShadow: theme.shadows[5],
-                padding: theme.spacing(2, 4, 3),
-            },
-        }),
-    );
-    const classes = useStyles();
-
-    interface TabPanelProps {
-        children?: React.ReactNode;
-        index: any;
-        value: any;
-    }
-
-    function TabPanel(props: TabPanelProps) {
-        const {children, value, index, ...other} = props;
-
-        return (
-            <div
-                role="tabpanel"
-                hidden={value !== index}
-                id={`simple-tabpanel-${index}`}
-                aria-labelledby={`simple-tab-${index}`}
-                {...other}
-            >
-                {value === index && (
-                    <Box p={3}>
-                        <Typography>{children}</Typography>
-                    </Box>
-                )}
-            </div>
-        );
-    }
-
-    function tabProps(index: any) {
-        return {
-            id: `simple-tab-${index}`,
-            'aria-controls': `simple-tabpanel-${index}`,
-        };
-    }
-
-    const handleConstraintTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
-        setConstraintTabIndex(newValue);
+    const exerciseNameChange = (event: any) => {
+        const measures = exercise.measures;
+        const updatedExercise = createExercise(measures, exercise.bpm, event.target.value);
+        setExercise(updatedExercise);
     };
 
     const bpmChange = (event: any) => {
-        if (currentExercise) {
-            let currentExerciseCopy = {
-                ...currentExercise,
-                bpm: parseInt(event.target.value),
-                measures: currentExercise.measures
-            };
-            setCurrentExercise(currentExerciseCopy);
-        }
+        const measures = exercise.measures;
+        const bpm = parseInt(event.target.value) || 0;
+        const updatedExercise = createExercise(measures, bpm, exercise.title);
+        setExercise(updatedExercise);
     };
 
-    function rand() {
-        return Math.round(Math.random() * 20) - 10;
-    }
+    //#endregion
 
-    function getModalStyle() {
-        const top = 50 + rand();
-        const left = 50 + rand();
-
-        return {
-            top: `${top}%`,
-            left: `${left}%`,
-            transform: `translate(-${top}%, -${left}%)`,
-        };
-    }
-
-    const handleConstraintOpen = (event: any) => {
-        setConstraintOpen(true);
+    //#region UiCallbacks
+    const handleConfigureOpen = () => {
+        setConfigureOpen(true);
     };
 
-    const handleConstraintClose = (event: any) => {
-        setConstraintOpen(false);
+    const handleConfigureClose = () => {
+        setConfigureOpen(false);
     };
-    
-    const handleStickingDescriptionClick = (event: any) => {
-        setStickingDescriptionOpen(true);
-    };
-    
-    const handleStickingDescriptionClose = (event: any) => {
-        setStickingDescriptionOpen(false);
-    };
-    
-    const handlePageDescriptionClick = (event: any) => {
+
+    const handlePageDescriptionOpen = () => {
         setPageDescriptionOpen(true);
     };
-    
-    const handlePageDescriptionClose = (event: any) => {
+
+    const handlePageDescriptionClose = () => {
         setPageDescriptionOpen(false);
     };
-    
+    //#endregion
+
     return (
-        <div className="App">
+        <div className='App'>
             <div className='App-header'>Random Drum Pattern Generator
-                <Button variant="contained" color="primary" onClick={handlePageDescriptionClick}>What is this?</Button>
-                <Modal open={pageDescriptionOpen} onClose={handlePageDescriptionClose}>
-                    <div style={modalStyle} className={classes.paper}>
-                        <h2>What is this page and why does it exist?</h2>
-                        <p>{PageDescription}</p>
-                    </div>
-                </Modal>
+                <Button variant='contained' color='primary' onClick={handlePageDescriptionOpen}>What is this?</Button>
             </div>
-            <Card className={classes.cardRoot}>
-                {savedExercises && savedExercises.length > 0 && <CardHeader title={'Saved Exercises'}/>}
-                <CardContent>
-                    {savedExercises.map((exercise) => {
-                        const deleteCallback = () => {
-                            const firstIndexOfExercise = savedExercises.indexOf(exercise);
-                            const savedExercisesCopy = [...savedExercises];
-                            savedExercisesCopy.splice(firstIndexOfExercise, 1);
-                            setSavedExercises(savedExercisesCopy);
-                        };
-                        const playCallback = () => {
-                            playTrack(exercise);
-                        };
-                        return (
-                            <Card className={classes.cardRoot}>
-                                <CardContent>
-                                    <div>
-                                        <Abcjs
-                                            abcNotation={exercise.sheetMusic}
-                                            parserParams={{}}
-                                            engraverParams={{responsive: 'resize'}}
-                                            renderParams={{viewportHorizontal: true}}
-                                        />
-                                        <Button variant="contained" color="secondary"
-                                                onClick={deleteCallback}>Delete</Button>
-                                        <Button variant="contained" color="primary"
-                                                onClick={playCallback}
-                                        >Play</Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
-                </CardContent>
-            </Card>
-
-            <Card className={classes.cardRoot}>
-                <CardHeader title={'Unsaved (Current) Exercise'}/>
-                {currentExercise &&
-                <CardContent>
-                    <Abcjs
-                        abcNotation={currentExercise.sheetMusic}
-                        parserParams={{}}
-                        engraverParams={{responsive: 'resize'}}
-                        renderParams={{viewportHorizontal: true}}
-                    />
-                    <Button variant="contained" color="primary"
-                            onClick={() => {
-                                playTrack(currentExercise)
-                            }}
-                    >PLAY</Button>
-                    <TextField style={{marginLeft: '18px'}} value={currentExercise.bpm} onChange={bpmChange}
-                               id="standard-basic" label="BPM of Playback"/>
-                    <FormControlLabel
-                        control={<Switch checked={hiHatOnPlayback} onChange={updateHiHat} name="oneAnd"/>}
-                        label="Enable Hi-Hat on playback?"
-                    />
-                </CardContent>
-                }
-            </Card>
-
-            <Card className={classes.cardRoot}>
-                <CardContent>
-                    <FormControl component="fieldset">
-                        <FormLabel component="legend">Generation Controls</FormLabel>
-                        <TextField value={measureName} onChange={measureNameChange} id="standard-basic"
-                                   label="Pattern Name"/>
-                        <CardActions>
-                            <Tooltip title={<span style={{fontSize: '18px'}}>{errorList}</span>}>
-                                    <span style={{cursor: 'not-allowed'}}>
-                                    <Button disabled={errorList.length > 0} variant="contained"
-                                            onClick={generateNewExercise}>Generate Measure</Button>
-                                    </span>
-                            </Tooltip>
-                            <Button variant="contained" color="primary" onClick={saveExercise}>Save</Button>
-                            <Button variant="contained" color="primary" onClick={removeExercise}>Remove</Button>
-                            <Button variant="contained" color="primary"
-                                    onClick={handleConstraintOpen}>Configure</Button>
-                            <Modal open={constraintOpen} onClose={handleConstraintClose}>
-                                <div style={modalStyle} className={classes.paper}>
-                                    <AppBar>
-                                        <Tabs value={constraintTabIndex} onChange={handleConstraintTabChange}
-                                              aria-label="configuration">
-                                            <Tab label="Consecutive Notes" {...tabProps(0)} />
-                                            <Tab label="Total Number of Notes" {...tabProps(1)} />
-                                            <Tab label="Hit Placement" {...tabProps(2)} />
-                                            <Tab label="Sticking Style" {...tabProps(3)} />
-                                        </Tabs>
-                                    </AppBar>
-                                    <TabPanel value={constraintTabIndex} index={0}>
-                                        <NumberSelectTab mode={'consecutive'} selection={consecutiveHitsSelection}
-                                                         title={'Specify Maximum Consecutive Notes For A Drum Sound'}
-                                                         setSelection={setConsecutiveHitsSelection} config={config}
-                                                         description={ConsecutiveNoteDescription}
-                                                         setConfig={setConfig}/>
-                                    </TabPanel>
-                                    <TabPanel value={constraintTabIndex} index={1}>
-                                        <NumberSelectTab mode={'noteCount'} selection={noteCountSelection}
-                                                         title={'Specify Exact Note Count For A Drum Sound'}
-                                                         setSelection={setNoteCountSelection} config={config}
-                                                         description={ExactNumberNoteDescription}
-                                                         setConfig={setConfig}/>
-                                    </TabPanel>
-                                    <TabPanel value={constraintTabIndex} index={2}>
-                                        <SwitchArrayTab selection={mandatoryNotePlacementSelection}
-                                                        title={'Specify Mandatory Note Placements For A Drum Sound'}
-                                                        description={MandatoryNotePlacementDescription}
-                                                        help={MandatoryNoteMusicalHelp}
-                                                        setSelection={setMandatoryNotePlacementSelection}
-                                                        config={config}
-                                                        setConfig={setConfig}/>
-                                    </TabPanel>
-                                    <TabPanel value={constraintTabIndex} index={3}>
-                                        <div>
-                                            <Card style={{
-                                                display: 'flex',
-                                                marginTop: '50px',
-                                                justifyContent: 'center',
-                                                flexDirection: 'column',
-                                            }}>
-                                                <CardHeader title={'Specify A Sticking Type'}/>
-                                                <CardContent>
-                                                    <FormControl className={classes.formControl}>
-                                                        <InputLabel id="demo-simple-select-label">Sticking
-                                                            Pattern</InputLabel>
-                                                        <Select
-                                                            labelId="demo-simple-select-label"
-                                                            id="demo-simple-select"
-                                                            value={EStickingStyle[config.stickingStyle]}
-                                                            onChange={stickingSelectionChange}
-                                                        >
-                                                            <MenuItem value={'none'}>None</MenuItem>
-                                                            <MenuItem value={'naturalSticking'}>Natural</MenuItem>
-                                                            <MenuItem value={'alternating'}>Alternating</MenuItem>
-                                                            <MenuItem value={'random'}>Random</MenuItem>
-                                                        </Select>
-                                                    </FormControl>
-                                                </CardContent>
-                                            </Card>
-                                            <div>
-                                                <button onClick={handleStickingDescriptionClick}>Help</button>
-                                                <Modal open={stickingDescriptionOpen} onClose={handleStickingDescriptionClose}>
-                                                    <div style={modalStyle} className={classes.paper}>
-                                                        <h2>Sticking Type Description</h2>
-                                                        <p>{StickingDescription}</p>
-                                                    </div>
-                                                </Modal>
-                                            </div>
-                                        </div>
-                                    </TabPanel>
-                                </div>
-                            </Modal>
-                        </CardActions>
+            <div style={{
+                marginTop: '50px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+            }}>
+                <Abcjs
+                    abcNotation={exercise.abcJsNotation}
+                    parserParams={{}}
+                    engraverParams={{responsive: 'resize'}}
+                    renderParams={{viewportHorizontal: true}}
+                />
+                <div style={{
+                    marginTop: '50px',
+                    display: 'flex',
+                    flexDirection: 'row',
+                    justifyContent: 'center'
+                }}>
+                    <FormControl className={styleClasses.buttonArray}>
+                        <Tooltip title={`Play Audio Preview`}>
+                            <span>
+                                <Button variant='contained' color='primary'
+                                        disabled={isPlaying || exercise.bpm === 0 ||
+                                            exercise.measures.length === 0}
+                                        onClick={() => {
+                                            playTrack(exercise);
+                                        }}
+                                >PLAY</Button>
+                            </span>
+                        </Tooltip>
                     </FormControl>
-                </CardContent>
-            </Card>
+                    <FormControl className={styleClasses.buttonArray}>
+                        <Tooltip title={`Stop Audio Preview`}>
+                            <span>
+                                <Button variant='contained' color='secondary'
+                                        disabled={!isPlaying}
+                                        onClick={() => {
+                                            stopAudio();
+                                        }}
+                                >STOP</Button>
+                            </span>
+                        </Tooltip>
+                    </FormControl>
+                    <TextField style={{marginLeft: '18px'}}
+                               disabled={isPlaying}
+                               value={exercise.bpm} onChange={bpmChange}
+                               id='standard-basic' label='BPM of Playback'/>
+                </div>
+                <FormControl style={{
+                    marginLeft: '30px'
+                }}>
+                    <TextField value={exercise.title}
+                               disabled={isPlaying}
+                               inputProps={{maxLength: 30}}
+                               onChange={exerciseNameChange} id='standard-basic'
+                               label='Pattern Name'/>
+                </FormControl>
+                <div style={{
+                    marginTop: '50px',
+                    display: 'flex',
+                    flexDirection: 'row',
+                    justifyContent: 'center'
+                }}>
+                    <FormControl className={styleClasses.buttonArray}>
+                        <Tooltip title={`Generates a new measure based on your settings`}>
+                            <span>
+                                <Button disabled={exercise.title === '' || isPlaying} variant='contained'
+                                        color='primary'
+                                        onClick={GenerateMeasure}>New Measure</Button>
+                            </span>
+                        </Tooltip>
+                    </FormControl>
+                    <FormControl className={styleClasses.buttonArray}>
+                        <Tooltip
+                            title={`Saves the exercise and settings, this exercise and settings will load next time you visit this page`}>
+                            <span>
+                                <Button variant='contained'
+                                        disabled={exercise.bpm === 0 ||
+                                            isPlaying}
+                                        color='primary'
+                                        onClick={save}>Save</Button>
+                            </span>
+                        </Tooltip>
+                    </FormControl>
+                    <FormControl className={styleClasses.buttonArray}>
+                        <Tooltip title={`Deletes the last measure`}>
+                            <span>
+                                <Button variant='contained'
+                                        disabled={isPlaying}
+                                        color='secondary'
+                                        onClick={deleteMeasure}>Delete</Button>
+                            </span>
+                        </Tooltip>
+                    </FormControl>
+                    <FormControl className={styleClasses.buttonArray}>
+                        <Tooltip title={`Opens the options to configure how measures are generated`}>
+                            <span>
+                                <Button variant='contained' color='primary'
+                                        disabled={isPlaying}
+                                        onClick={handleConfigureOpen}>Settings</Button>
+                            </span>
+                        </Tooltip>
+                    </FormControl>
+                </div>
+            </div>
+            <Modal open={configureOpen} onClose={handleConfigureClose}>
+                <ConfigurationModal config={config} handleConfigureClose={handleConfigureClose} setConfig={setConfig}/>
+            </Modal>
+            <Modal open={pageDescriptionOpen} onClose={handlePageDescriptionClose}>
+                <div style={modalStyle} className={styleClasses.paper}>
+                    <h2>What is this page and why does it exist?</h2>
+                    <p>{PageDescription}</p>
+                    <div style={{
+                        marginTop: '50px',
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'center'
+                    }}>
+                        <FormControl>
+                            <Button variant='contained' color='primary'
+                                    onClick={handlePageDescriptionClose}>Done</Button>
+                        </FormControl>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
